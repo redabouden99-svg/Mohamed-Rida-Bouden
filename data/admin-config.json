@@ -1,0 +1,25 @@
+{
+  "adminPassword": "admin123",
+  "geminiApiKey": "AIzaSyDktHt8N0WO1OdET2TYTQ_Bvi9-z28zhH4",
+  "siteContent": {
+    "heroTitle": "RACE. ANALYZE. PREDICT.",
+    "heroTitleHighlight": "ANALYZE.",
+    "heroSubtitle": "The ultimate AI-powered hub for Teams, Drivers & Live Strategy.",
+    "heroBgImage": "https://newsroom.porsche.com/.imaging/mte/porsche-templating-theme/image_1290x726/dam/pnr/2023/Motorsports/WEC/Le-Mans-Test-Day/02-Porsche-963-Porsche-Penske-Motorsport.jpg/jcr:content/02-Porsche-963-Porsche-Penske-Motorsport.jpg",
+    "announcementActive": true,
+    "announcementText": "🏎️ Live AI Strategy Engine active for 2026 season. Real-time telemetry & predictive modeling enabled.",
+    "announcementType": "info",
+    "announcementLink": "#series-selector",
+    "customNews": [
+      {
+        "id": "cn-1",
+        "title": "Bouden Motorsport: Next-Gen AI Telemetry Engine Deployed",
+        "summary": "Real-time analysis powered by Google Gemini now correlates aerodynamic efficiency, tire degradation, and strategic pit windows.",
+        "series": "Formula 1",
+        "source": "Bouden Editorial",
+        "url": "#",
+        "date": "2026-09-30"
+      }
+    ]
+  }
+}

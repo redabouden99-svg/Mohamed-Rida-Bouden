@@ -3,6 +3,7 @@ const RSSParser = require("rss-parser");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const { GoogleGenAI, Type } = require("@google/genai");
 
 const app = express();
@@ -11,7 +12,8 @@ const isProd = process.env.NODE_ENV === "production";
 
 app.use(cors({
     origin: "*",
-    methods: ["GET", "POST", "OPTIONS"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
 
@@ -22,6 +24,129 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// Admin Configuration Persistence
+const CONFIG_FILE = path.join(__dirname, "data", "admin-config.json");
+
+const defaultSiteContent = {
+    heroTitle: "RACE. ANALYZE. PREDICT.",
+    heroTitleHighlight: "ANALYZE.",
+    heroSubtitle: "The ultimate AI-powered hub for Teams, Drivers & Live Strategy.",
+    heroBgImage: "https://newsroom.porsche.com/.imaging/mte/porsche-templating-theme/image_1290x726/dam/pnr/2023/Motorsports/WEC/Le-Mans-Test-Day/02-Porsche-963-Porsche-Penske-Motorsport.jpg/jcr:content/02-Porsche-963-Porsche-Penske-Motorsport.jpg",
+    announcementActive: true,
+    announcementText: "🏎️ Live AI Strategy Engine active for 2026 season. Real-time telemetry & predictive modeling enabled.",
+    announcementType: "info",
+    announcementLink: "#series-selector",
+    customNews: [
+        {
+            id: "cn-1",
+            title: "Bouden Motorsport: Next-Gen AI Telemetry Engine Deployed",
+            summary: "Real-time analysis powered by Google Gemini now correlates aerodynamic efficiency, tire degradation, and strategic pit windows.",
+            series: "Formula 1",
+            source: "Bouden Editorial",
+            url: "#",
+            date: new Date().toISOString().split("T")[0]
+        }
+    ]
+};
+
+let adminConfig = {
+    adminPassword: process.env.ADMIN_PASSWORD || "admin123",
+    geminiApiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || "",
+    siteContent: defaultSiteContent
+};
+
+// Load saved config if available
+try {
+    if (fs.existsSync(CONFIG_FILE)) {
+        const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
+        const parsed = JSON.parse(raw);
+        adminConfig = {
+            ...adminConfig,
+            ...parsed,
+            siteContent: {
+                ...defaultSiteContent,
+                ...(parsed.siteContent || {})
+            }
+        };
+        // If file had empty key but env has one, keep env key
+        if (!adminConfig.geminiApiKey && (process.env.GEMINI_API_KEY || process.env.API_KEY)) {
+            adminConfig.geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+        }
+    } else {
+        // Ensure directory exists
+        const dir = path.dirname(CONFIG_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(adminConfig, null, 2));
+    }
+} catch (e) {
+    console.error("Error reading admin config file:", e);
+}
+
+function saveAdminConfig() {
+    try {
+        const dir = path.dirname(CONFIG_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(adminConfig, null, 2));
+    } catch (e) {
+        console.error("Error saving admin config file:", e);
+    }
+}
+
+// In-memory active admin sessions
+const activeSessions = new Map(); // token -> { createdAt, expiresAt }
+
+function createAdminSession() {
+    const token = "bms_" + crypto.randomBytes(24).toString("hex");
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    activeSessions.set(token, { createdAt: Date.now(), expiresAt });
+    return token;
+}
+
+function verifyAdminToken(token) {
+    if (!token) return false;
+    const session = activeSessions.get(token);
+    if (!session) return false;
+    if (Date.now() > session.expiresAt) {
+        activeSessions.delete(token);
+        return false;
+    }
+    return true;
+}
+
+function requireAdminAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized: Missing Bearer token" });
+    }
+    const token = authHeader.substring(7).trim();
+    if (!verifyAdminToken(token)) {
+        return res.status(401).json({ error: "Unauthorized: Invalid or expired session" });
+    }
+    next();
+}
+
+// Gemini AI Instance Management
+let ai = null;
+function initGemini(apiKey) {
+    if (apiKey && apiKey.trim().length > 0) {
+        try {
+            ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+            console.log("✨ Google Gemini client initialized with key length:", apiKey.trim().length);
+            return true;
+        } catch (err) {
+            console.error("Failed to initialize GoogleGenAI:", err);
+            ai = null;
+            return false;
+        }
+    } else {
+        ai = null;
+        return false;
+    }
+}
+
+// Initial init
+initGemini(adminConfig.geminiApiKey);
 
 // RSS Feeds
 const parser = new RSSParser({
@@ -70,7 +195,14 @@ const fallbackNews = {
     ]
 };
 
-// API: News Endpoint
+// ==================== PUBLIC API ENDPOINTS ====================
+
+// Public Site Content
+app.get("/api/site-content", (req, res) => {
+    res.json(adminConfig.siteContent || defaultSiteContent);
+});
+
+// API: News Endpoint (Merges custom admin news with RSS)
 app.get("/api/news/:series", async (req, res) => {
     const rawSeries = (req.params.series || "").toLowerCase();
     const seriesKey = rawSeries.includes("moto") ? "motogp" :
@@ -78,46 +210,73 @@ app.get("/api/news/:series", async (req, res) => {
                       rawSeries.includes("imsa") ? "imsa" :
                       rawSeries.includes("gt") ? "gtwc" : "f1";
 
+    const customArticles = (adminConfig.siteContent.customNews || [])
+        .filter(item => !item.series || item.series.toLowerCase().includes(seriesKey) || item.series === "All" || rawSeries.includes((item.series || "").toLowerCase()))
+        .map(item => ({
+            title: item.title,
+            link: item.url || "#",
+            summary: item.summary,
+            source: item.source || "Bouden Editorial",
+            date: item.date || new Date().toISOString().split("T")[0],
+            isCustom: true
+        }));
+
     const url = feeds[seriesKey];
     const now = Date.now();
 
+    let fetchedNews = [];
     if (feedCache[seriesKey] && (now - feedCache[seriesKey].timestamp < CACHE_TTL)) {
-        return res.json(feedCache[seriesKey].data);
-    }
-
-    try {
-        const feed = await parser.parseURL(url);
-        if (feed && feed.items && feed.items.length > 0) {
-            const news = feed.items.slice(0, 6).map(item => ({
-                title: item.title || "Motorsport Update",
-                link: item.link || "https://www.motorsport.com",
-                summary: item.contentSnippet || item.content || "Latest news update from the paddock.",
-                date: item.pubDate || new Date().toISOString()
-            }));
-
-            feedCache[seriesKey] = {
-                timestamp: now,
-                data: news
-            };
-            return res.json(news);
+        fetchedNews = feedCache[seriesKey].data;
+    } else {
+        try {
+            const feed = await parser.parseURL(url);
+            if (feed && feed.items && feed.items.length > 0) {
+                fetchedNews = feed.items.slice(0, 6).map(item => ({
+                    title: item.title || "Motorsport Update",
+                    link: item.link || "https://www.motorsport.com",
+                    summary: item.contentSnippet || item.content || "Latest news update from the paddock.",
+                    date: item.pubDate || new Date().toISOString()
+                }));
+                feedCache[seriesKey] = {
+                    timestamp: now,
+                    data: fetchedNews
+                };
+            }
+        } catch (error) {
+            console.warn(`RSS fetch error for ${seriesKey}:`, error.message);
+            fetchedNews = feedCache[seriesKey]?.data || fallbackNews[seriesKey] || fallbackNews.f1;
         }
-    } catch (error) {
-        console.warn(`RSS fetch error for ${seriesKey}:`, error.message);
     }
 
-    if (feedCache[seriesKey]) {
-        return res.json(feedCache[seriesKey].data);
-    }
-    return res.json(fallbackNews[seriesKey] || fallbackNews.f1);
+    // Combine custom editorial articles at the top with external RSS items
+    const combined = [...customArticles, ...fetchedNews];
+    res.json(combined);
 });
-
-// Gemini AI Setup
-const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const SYSTEM_INSTRUCTION = `You are a world-class motorsport expert analyst and strategist.
 You provide deep technical insights, race strategy breakdowns, and realistic predictions for Formula 1, MotoGP, WEC, IMSA, and GT World Challenge.
 Your tone is professional, enthusiastic, and data-driven.`;
+
+// Resilient Gemini Call with Model Fallback
+async function generateGeminiContent(params) {
+    const candidateModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.8-flash"];
+    let lastError = null;
+    for (const modelName of candidateModels) {
+        try {
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after 6s calling ${modelName}`)), 6000));
+            const callPromise = ai.models.generateContent({
+                ...params,
+                model: modelName
+            });
+            const res = await Promise.race([callPromise, timeoutPromise]);
+            return res;
+        } catch (err) {
+            lastError = err;
+            console.warn(`Model ${modelName} call failed, attempting fallback:`, err.message || err);
+        }
+    }
+    throw lastError;
+}
 
 // API: Gemini Predictions
 app.get("/api/predict/:series", async (req, res) => {
@@ -133,8 +292,7 @@ app.get("/api/predict/:series", async (req, res) => {
     }
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await generateGeminiContent({
             contents: `Predict the outcome of the next upcoming race weekend for ${series}. Include winner, podium (top 3 names), data-backed reasoning, and confidence score (integer 0-100).`,
             config: {
                 systemInstruction: SYSTEM_INSTRUCTION,
@@ -182,8 +340,7 @@ app.get("/api/analysis/:series", async (req, res) => {
     }
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await generateGeminiContent({
             contents: `Provide a detailed engineering technical analysis for ${series} regarding current vehicle dynamics, aerodynamics, tire degradation, and track characteristics.`,
             config: {
                 systemInstruction: SYSTEM_INSTRUCTION,
@@ -218,10 +375,166 @@ app.get("/api/analysis/:series", async (req, res) => {
 
 // API: Health check
 app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    res.json({
+        status: "ok",
+        geminiConfigured: !!ai,
+        timestamp: new Date().toISOString()
+    });
 });
 
-// Frontend Serving
+// ==================== ADMIN API ENDPOINTS ====================
+
+// Admin Login
+app.post("/api/admin/login", (req, res) => {
+    const { password } = req.body;
+    if (!password) {
+        return res.status(400).json({ success: false, message: "كلمة المرور مطلوبة / Password is required" });
+    }
+    if (password === adminConfig.adminPassword) {
+        const token = createAdminSession();
+        return res.json({
+            success: true,
+            token,
+            message: "تم تسجيل الدخول بنجاح / Logged in successfully"
+        });
+    }
+    return res.status(401).json({
+        success: false,
+        message: "كلمة المرور غير صحيحة / Invalid password"
+    });
+});
+
+// Admin Verify Session
+app.get("/api/admin/verify", requireAdminAuth, (req, res) => {
+    res.json({ success: true, valid: true });
+});
+
+// Admin Get Config & Status
+app.get("/api/admin/config", requireAdminAuth, (req, res) => {
+    const key = adminConfig.geminiApiKey || "";
+    const maskedKey = key.length > 8 ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : (key ? "****" : "");
+
+    res.json({
+        success: true,
+        geminiConfigured: !!ai,
+        geminiKeyMasked: maskedKey,
+        geminiModel: "gemini-3.8-flash",
+        siteContent: adminConfig.siteContent,
+        hasDefaultPassword: adminConfig.adminPassword === "admin123",
+        uptimeSeconds: Math.floor(process.uptime())
+    });
+});
+
+// Admin Update Gemini Key
+app.post("/api/admin/gemini-key", requireAdminAuth, (req, res) => {
+    const { apiKey } = req.body;
+    if (typeof apiKey !== "string") {
+        return res.status(400).json({ success: false, message: "صيغة المفتاح غير صالحة / Invalid key format" });
+    }
+
+    const trimmedKey = apiKey.trim();
+    adminConfig.geminiApiKey = trimmedKey;
+    saveAdminConfig();
+
+    const ok = initGemini(trimmedKey);
+    const masked = trimmedKey.length > 8 ? `${trimmedKey.substring(0, 6)}...${trimmedKey.substring(trimmedKey.length - 4)}` : (trimmedKey ? "****" : "");
+
+    res.json({
+        success: true,
+        geminiConfigured: ok,
+        maskedKey: masked,
+        message: ok ? "تم تحديث وتفعيل مفتاح Gemini بنجاح / Gemini API key updated and active" : "تم حفظ المفتاح (العميل غير نشط) / Key saved"
+    });
+});
+
+// Admin Test Gemini Key
+app.post("/api/admin/test-gemini", requireAdminAuth, async (req, res) => {
+    if (!ai) {
+        return res.status(400).json({
+            success: false,
+            message: "مفتاح Gemini API غير محدد حالياً على الخادم / No Gemini API key configured on server"
+        });
+    }
+
+    try {
+        const start = Date.now();
+        const response = await generateGeminiContent({
+            contents: "Motorsport telemetry check: respond with 1 sentence confirming AI engine connection is active."
+        });
+        const duration = Date.now() - start;
+
+        res.json({
+            success: true,
+            latencyMs: duration,
+            response: response.text ? response.text.trim() : "Connected successfully",
+            message: "تم فحص الاتصال بمحرك Gemini API بنجاح! / Gemini API connection verified successfully!"
+        });
+    } catch (err) {
+        console.error("Admin Gemini test error:", err);
+        res.status(500).json({
+            success: false,
+            error: err.message || "Failed to communicate with Gemini API",
+            message: "فشل اختبار المفتاح، تحقق من صحة المفتاح والأذونات / Key test failed, check key validity and quotas"
+        });
+    }
+});
+
+// Admin Update Site Content
+app.post("/api/admin/content", requireAdminAuth, (req, res) => {
+    const { siteContent } = req.body;
+    if (!siteContent || typeof siteContent !== "object") {
+        return res.status(400).json({ success: false, message: "محتوى غير صالح / Invalid content payload" });
+    }
+
+    adminConfig.siteContent = {
+        ...adminConfig.siteContent,
+        ...siteContent
+    };
+    saveAdminConfig();
+
+    res.json({
+        success: true,
+        siteContent: adminConfig.siteContent,
+        message: "تم حفظ وتحديث محتوى الموقع بنجاح / Site content updated successfully"
+    });
+});
+
+// Admin Change Password
+app.post("/api/admin/change-password", requireAdminAuth, (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 4) {
+        return res.status(400).json({
+            success: false,
+            message: "يجب ألا تقل كلمة المرور الجديدة عن 4 أحرف / New password must be at least 4 characters"
+        });
+    }
+    if (currentPassword !== adminConfig.adminPassword) {
+        return res.status(401).json({
+            success: false,
+            message: "كلمة المرور الحالية غير صحيحة / Current password incorrect"
+        });
+    }
+
+    adminConfig.adminPassword = newPassword;
+    saveAdminConfig();
+
+    res.json({
+        success: true,
+        message: "تم تغيير كلمة المرور بنجاح / Password changed successfully"
+    });
+});
+
+// Admin Logout
+app.post("/api/admin/logout", requireAdminAuth, (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7).trim();
+        activeSessions.delete(token);
+    }
+    res.json({ success: true, message: "تم تسجيل الخروج / Logged out successfully" });
+});
+
+// ==================== FRONTEND SERVING ====================
 async function startServer() {
     const distPath = path.join(__dirname, "dist");
     const hasDist = fs.existsSync(distPath);

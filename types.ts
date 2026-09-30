@@ -79,3 +79,25 @@ export interface Team {
     rank: number; // Current standing
     category?: string; // e.g., "Hypercar", "LMGT3", "GTP", "GTD", "Europe", "Asia"
 }
+
+export interface CustomArticle {
+    id: string;
+    title: string;
+    summary: string;
+    series: string;
+    source: string;
+    url: string;
+    date: string;
+}
+
+export interface SiteContent {
+    heroTitle: string;
+    heroTitleHighlight: string;
+    heroSubtitle: string;
+    heroBgImage: string;
+    announcementActive: boolean;
+    announcementText: string;
+    announcementType: 'info' | 'breaking' | 'warning' | 'success';
+    announcementLink?: string;
+    customNews: CustomArticle[];
+}
