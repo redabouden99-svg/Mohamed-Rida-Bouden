@@ -16,19 +16,19 @@ const getFallbackNews = (series: SeriesId): NewsItem[] => {
     switch (series) {
         case SeriesId.F1:
             return [
-                { title: "Verstappen dominates recent testing session", summary: "Red Bull looks strong ahead of the season opener as Max Verstappen sets the fastest time in Bahrain testing.", source: "Fallback Feed", url: "https://www.formula1.com", date },
-                { title: "Ferrari unveils new aerodynamic package", summary: "The Scuderia brings significant updates to the sidepods and floor to combat tire degradation.", source: "Fallback Feed", url: "https://www.formula1.com", date },
-                { title: "Hamilton speaks on team morale", summary: "Lewis Hamilton praises the team's efforts over the winter break to close the gap to the front runners.", source: "Fallback Feed", url: "https://www.formula1.com", date }
+                { title: "Norris and Verstappen battle intensifies in 2026", summary: "McLaren and Red Bull push technological boundaries as Lewis Hamilton continues his podium pursuit with Ferrari.", source: "Fallback Feed", url: "https://www.formula1.com", date },
+                { title: "Ferrari unveils next-gen aerodynamic package", summary: "The Scuderia brings significant updates to the SF-26 floor to combat tire degradation at high-speed circuits.", source: "Fallback Feed", url: "https://www.formula1.com", date },
+                { title: "Hamilton praises Maranello team morale", summary: "Lewis Hamilton praises Ferrari's relentless development push and seamless cockpit ergonomics.", source: "Fallback Feed", url: "https://www.formula1.com", date }
             ];
         case SeriesId.MOTOGP:
             return [
-                { title: "Bagnaia confident in title defense", summary: "Pecco Bagnaia feels the new Ducati GP25 is a significant step forward from last year's bike.", source: "Fallback Feed", url: "https://www.motogp.com", date },
-                { title: "Marquez adapts to factory Ducati team", summary: "Marc Marquez continues to adjust to the factory team environment and the latest spec machinery.", source: "Fallback Feed", url: "https://www.motogp.com", date }
+                { title: "Bagnaia and Marc Márquez duel on Factory Ducatis", summary: "Pecco Bagnaia and Marc Márquez push the Desmosedici GP26 to unprecedented lap records in 2026.", source: "Fallback Feed", url: "https://www.motogp.com", date },
+                { title: "Marc Márquez triumphs in European rounds", summary: "Marc Márquez continues his electrifying form on the factory Ducati Lenovo GP26 machine.", source: "Fallback Feed", url: "https://www.motogp.com", date }
             ];
         case SeriesId.GT_WORLD_CHALLENGE:
             return [
-                { title: "Team WRT confirms driver lineup for 2025", summary: "The Belgian squad announces a star-studded lineup including Valentino Rossi for the upcoming season.", source: "Fallback Feed", url: "https://www.gt-world-challenge-europe.com/", date },
-                { title: "Ferrari 296 GT3 shows pace in Prologue", summary: "AF Corse tops the timing sheets at Paul Ricard during the official pre-season test.", source: "Fallback Feed", url: "https://www.gt-world-challenge-europe.com/", date }
+                { title: "Team WRT confirms driver lineup for 2026", summary: "The Belgian squad announces a star-studded lineup including Valentino Rossi and Dries Vanthoor for the 2026 season.", source: "Fallback Feed", url: "https://www.gt-world-challenge-europe.com/", date },
+                { title: "Ferrari 296 GT3 tops Spa 24H tests", summary: "AF Corse tops the timing sheets at Spa-Francorchamps during the official 2026 pre-season tests.", source: "Fallback Feed", url: "https://www.gt-world-challenge-europe.com/", date }
             ];
         default:
             return [

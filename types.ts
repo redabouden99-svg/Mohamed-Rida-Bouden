@@ -73,11 +73,17 @@ export interface Team {
     logoColor: string; // CSS color for borders/accents
     image: string; // Car or team cover image
     logo: string; // Official Team Logo URL
-    // New Fields
+    // Extended 2026 Motorsport Details
     history: string; // Historical overview
     points: number; // Championship points
     rank: number; // Current standing
     category?: string; // e.g., "Hypercar", "LMGT3", "GTP", "GTD", "Europe", "Asia"
+    engine?: string; // Power Unit / Engine specs
+    chassis?: string; // Detailed chassis information
+    sponsors?: string[]; // Key official sponsors
+    technicalDirector?: string; // Technical director / chief engineer
+    firstEntry?: string; // Debut year in the championship
+    worldChampionships?: number; // Total championships won
 }
 
 export interface CustomArticle {
@@ -100,4 +106,79 @@ export interface SiteContent {
     announcementType: 'info' | 'breaking' | 'warning' | 'success';
     announcementLink?: string;
     customNews: CustomArticle[];
+}
+
+// ==================== AUTOMATED BOT & RESULTS TYPES ====================
+export interface ChampionshipBot {
+    name: string;
+    series: SeriesId;
+    status: 'active' | 'syncing' | 'idle';
+    lastSynced: string;
+    syncCount: number;
+    feedSource: string;
+    pingMs: number;
+}
+
+export interface RaceResultEntry {
+    pos: number;
+    driver: string;
+    number: number;
+    team: string;
+    laps: number;
+    time: string;
+    gap: string;
+    points: number;
+    fastestLap?: boolean;
+    status?: string;
+    grid?: number;
+}
+
+export interface QualifyingResultEntry {
+    pos: number;
+    driver: string;
+    number: number;
+    team: string;
+    q1?: string;
+    q2?: string;
+    q3?: string;
+    bestLap: string;
+    gap: string;
+}
+
+export interface DriverStandingEntry {
+    pos: number;
+    driver: string;
+    nationality: string;
+    team: string;
+    points: number;
+    wins: number;
+    podiums: number;
+}
+
+export interface TeamStandingEntry {
+    pos: number;
+    team: string;
+    points: number;
+    wins: number;
+    engine?: string;
+}
+
+export interface ChampionshipEventInfo {
+    round: number;
+    totalRounds: number;
+    eventName: string;
+    circuit: string;
+    location: string;
+    date: string;
+    status: 'Completed' | 'Upcoming' | 'In Progress';
+}
+
+export interface SeriesResultsData {
+    series: SeriesId;
+    bot: ChampionshipBot;
+    event: ChampionshipEventInfo;
+    raceResults: RaceResultEntry[];
+    qualifyingResults: QualifyingResultEntry[];
+    driverStandings: DriverStandingEntry[];
+    teamStandings: TeamStandingEntry[];
 }

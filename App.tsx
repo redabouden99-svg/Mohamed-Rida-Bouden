@@ -20,7 +20,7 @@ function App() {
   });
 
   const [selectedSeries, setSelectedSeries] = useState<SeriesId | null>(null);
-  const [dashboardTab, setDashboardTab] = useState<'news' | 'analysis' | 'prediction' | 'teams'>('news');
+  const [dashboardTab, setDashboardTab] = useState<'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings'>('results');
   const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
 
   // Load dynamic site content
@@ -50,7 +50,7 @@ function App() {
     };
   }, [currentView]);
 
-  const handleSelectSeries = (series: SeriesId, tab: 'news' | 'analysis' | 'prediction' | 'teams' = 'news') => {
+  const handleSelectSeries = (series: SeriesId, tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings' = 'results') => {
     setSelectedSeries(series);
     setDashboardTab(tab);
     setCurrentView('dashboard');

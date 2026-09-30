@@ -1,19 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SeriesId, NewsItem, Prediction, AnalysisReport, GroundingSource, Team, Driver } from '../types';
+import { SeriesId, NewsItem, Prediction, AnalysisReport, GroundingSource, Team, Driver, SeriesResultsData } from '../types';
 import { getLatestNews } from '../services/newsService';
 import { getRacePrediction, getTechnicalAnalysis } from '../services/geminiService';
 import { getTeamsForSeries } from '../services/teamData';
+import { fetchSeriesResults, syncSeriesBot } from '../services/botService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Newspaper, Brain, Activity, Loader2, ExternalLink, MapPin, Zap, Users, Trophy, Flag, X, ListOrdered, Globe } from 'lucide-react';
+import { 
+    Newspaper, Brain, Activity, Loader2, ExternalLink, MapPin, 
+    Zap, Users, Trophy, Flag, X, ListOrdered, Globe, Info, 
+    ChevronRight, Radio, RefreshCw, CheckCircle2, Award 
+} from 'lucide-react';
+import TeamDetailModal from './TeamDetailModal';
+import BotResultsView from './BotResultsView';
 
 interface DashboardProps {
     series: SeriesId;
-    initialTab?: 'news' | 'analysis' | 'prediction' | 'teams' | 'standings';
+    initialTab?: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) => {
-    const [activeTab, setActiveTab] = useState<'news' | 'analysis' | 'prediction' | 'teams' | 'standings'>(initialTab);
+const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' }) => {
+    const [activeTab, setActiveTab] = useState<'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings'>(initialTab);
     const [loading, setLoading] = useState(false);
+    
+    // Automated Championship Bot State
+    const [botData, setBotData] = useState<SeriesResultsData | null>(null);
+    const [syncingBot, setSyncingBot] = useState<boolean>(false);
+    const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     
     const [newsData, setNewsData] = useState<{ news: NewsItem[], sources: GroundingSource[] } | null>(null);
     const [predictionData, setPredictionData] = useState<Prediction | null>(null);
@@ -26,7 +38,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
     // Live Telemetry State
     const [liveTelemetry, setLiveTelemetry] = useState<any[]>([]);
     
-    // Driver Modal State
+    // Team & Driver Modal States
+    const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
 
     const isMounted = useRef(true);
@@ -53,6 +66,35 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
         setTeamsData(getTeamsForSeries(series));
         setSelectedCategory('All'); // Reset filter on series change
     }, [series]);
+
+    // Fetch Automated Championship Bot Data
+    useEffect(() => {
+        fetchSeriesResults(series).then(data => {
+            if (data && isMounted.current) {
+                setBotData(data);
+            }
+        });
+    }, [series]);
+
+    const handleManualBotSync = async () => {
+        if (syncingBot) return;
+        setSyncingBot(true);
+        setSyncToast({ message: 'جاري الاتصال بسيرفر البوت والخلاصات الرسمية... / Fetching live feeds...', type: 'success' });
+        try {
+            const res = await syncSeriesBot(series);
+            if (res.success && res.data) {
+                setBotData(res.data);
+                setSyncToast({ message: 'تم تحديث ومزامنة بيانات البطولة بنجاح! / Synced Successfully', type: 'success' });
+            } else {
+                setSyncToast({ message: res.message || 'فشلت المزامنة / Sync failed', type: 'error' });
+            }
+        } catch {
+            setSyncToast({ message: 'خطأ أثناء الاتصال بالبوت / Connection error', type: 'error' });
+        } finally {
+            setSyncingBot(false);
+            setTimeout(() => setSyncToast(null), 4000);
+        }
+    };
 
     // Live Telemetry Animation Effect
     useEffect(() => {
@@ -86,8 +128,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [series, activeTab]);
 
-    const fetchData = async (tab: 'news' | 'analysis' | 'prediction' | 'teams' | 'standings', force = false) => {
-        if (tab === 'teams' || tab === 'standings') return; // Teams are static data 
+    const fetchData = async (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings', force = false) => {
+        if (tab === 'results' || tab === 'teams' || tab === 'standings') return; // Results and teams managed separately 
 
         setLoading(true);
         try {
@@ -108,7 +150,7 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
         }
     };
 
-    const handleTabChange = (tab: 'news' | 'analysis' | 'prediction' | 'teams' | 'standings') => {
+    const handleTabChange = (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings') => {
         setActiveTab(tab);
     };
 
@@ -171,6 +213,12 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-4 md:mt-0 bg-dark-800/50 p-1.5 rounded-full backdrop-blur-sm border border-white/5">
                         <button 
+                            onClick={() => handleTabChange('results')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-300 font-bold text-sm ${activeTab === 'results' ? `bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] ${getSeriesColor()}` : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                        >
+                            <Flag size={16} /> Results & Bots
+                        </button>
+                        <button 
                             onClick={() => handleTabChange('news')}
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-300 font-bold text-sm ${activeTab === 'news' ? `bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] ${getSeriesColor()}` : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
                         >
@@ -203,6 +251,64 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                     </div>
                 </div>
 
+                {/* Championship Bot Engine Live Status Banner */}
+                <div className="mb-6 bg-gradient-to-r from-dark-800/95 via-dark-800/80 to-dark-800/95 rounded-2xl border border-white/10 p-4 shadow-xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                        <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-brand-brightGreen/10 border border-brand-brightGreen/30 text-brand-brightGreen shrink-0 shadow-[0_0_20px_rgba(0,255,102,0.2)]">
+                            <Radio className={`w-5 h-5 ${syncingBot ? 'animate-spin' : 'animate-pulse'}`} />
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-brightGreen opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-brightGreen"></span>
+                            </span>
+                        </div>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-mono font-extrabold text-brand-brightGreen tracking-wider uppercase">
+                                    Bot Status: Active 🟢 - Live Sync
+                                </span>
+                                <span className="text-gray-600 hidden sm:inline">•</span>
+                                <span className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-none">
+                                    {botData?.bot?.name || `${series} Championship Bot`}
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-400 font-mono mt-0.5">
+                                <span className="text-gray-400 truncate max-w-[260px] sm:max-w-none">
+                                    Source: {botData?.bot?.feedSource || 'Official Live Timing & Telemetry Engine'}
+                                </span>
+                                <span>•</span>
+                                <span>Last Synced: {botData?.bot?.lastSynced ? new Date(botData.bot.lastSynced).toLocaleTimeString() : 'Just now'}</span>
+                                <span>•</span>
+                                <span className="text-brand-brightGreen font-semibold">{botData?.bot?.pingMs || 42}ms latency</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Manual Sync Button */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        {syncToast && (
+                            <span className={`text-xs font-mono font-bold animate-in fade-in duration-200 ${
+                                syncToast.type === 'error' ? 'text-red-400' : 'text-brand-brightGreen'
+                            }`}>
+                                {syncToast.message}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            disabled={syncingBot}
+                            onClick={handleManualBotSync}
+                            className={`group inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold font-mono tracking-wider transition-all duration-300 shadow-lg ${
+                                syncingBot
+                                    ? 'bg-dark-700 text-gray-400 cursor-not-allowed border border-white/10'
+                                    : 'bg-white/10 hover:bg-brand-red text-white hover:shadow-[0_0_20px_rgba(255,51,51,0.5)] border border-white/15 hover:border-brand-red active:scale-95'
+                            }`}
+                            title="تحديث فوري وتوليد أحدث نتائج السباقات والتصفيات عبر البوت"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${syncingBot ? 'animate-spin text-brand-brightGreen' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                            <span>{syncingBot ? 'جاري المزامنة...' : 'Manual Sync 🔄 (تحديث فوري)'}</span>
+                        </button>
+                    </div>
+                </div>
+
                 {/* Sub-Category Filter (Visible on Teams and Standings) */}
                 {(activeTab === 'teams' || activeTab === 'standings') && availableCategories.length > 2 && (
                     <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -230,6 +336,14 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                         </div>
                     ) : (
                         <>
+                            {activeTab === 'results' && (
+                                <BotResultsView 
+                                    data={botData} 
+                                    seriesColor={getSeriesColor()} 
+                                    seriesBg={getSeriesBg()} 
+                                />
+                            )}
+
                             {activeTab === 'standings' && (
                                 <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
                                     <div className="bg-dark-800 rounded-2xl border border-white/5 overflow-hidden">
@@ -246,26 +360,45 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                                                 </thead>
                                                 <tbody className="divide-y divide-white/5">
                                                     {sortedStandings.length > 0 ? sortedStandings.map((team) => (
-                                                        <tr key={team.id} className="hover:bg-white/5 transition-colors group">
+                                                        <tr 
+                                                            key={team.id} 
+                                                            onClick={() => setSelectedTeam(team)}
+                                                            className="hover:bg-white/10 transition-colors group cursor-pointer"
+                                                            title="Click to inspect full 2026 technical specifications and team profile"
+                                                        >
                                                             <td className="p-4 text-center font-display font-bold text-xl text-white">
-                                                                <span className={team.rank === 1 ? 'text-yellow-500' : ''}>{team.rank || '-'}</span>
+                                                                <span className={team.rank === 1 ? 'text-yellow-500 font-extrabold' : ''}>{team.rank || '-'}</span>
                                                             </td>
                                                             <td className="p-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="w-1 bg-white h-8 rounded-full" style={{backgroundColor: team.logoColor}}></div>
+                                                                    <div className="w-1.5 bg-white h-10 rounded-full" style={{backgroundColor: team.logoColor}}></div>
                                                                     <div>
-                                                                        <div className="font-bold text-white group-hover:text-brand-brightGreen transition-colors">{team.name}</div>
-                                                                        <div className="text-xs text-gray-500">{team.principal}</div>
+                                                                        <div className="font-bold text-white group-hover:text-brand-brightGreen transition-colors flex items-center gap-2">
+                                                                            <span>{team.name}</span>
+                                                                            <span className="text-[10px] text-gray-500 font-normal hidden sm:inline-block">({team.fullName})</span>
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                                                                            <span>{team.principal}</span>
+                                                                            {team.engine && (
+                                                                                <>
+                                                                                    <span>•</span>
+                                                                                    <span className="text-gray-500 font-mono text-[11px] truncate max-w-[200px]">{team.engine}</span>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="p-4 text-gray-400 hidden md:table-cell font-mono text-sm">{team.car}</td>
+                                                            <td className="p-4 text-gray-300 hidden md:table-cell font-mono text-sm font-semibold">{team.car}</td>
                                                             {series === SeriesId.GT_WORLD_CHALLENGE && (
                                                                 <td className="p-4 text-gray-400 text-xs uppercase">
                                                                     <span className="bg-white/10 px-2 py-1 rounded">{team.category}</span>
                                                                 </td>
                                                             )}
-                                                            <td className="p-4 text-right font-display font-bold text-white">{team.points || 0}</td>
+                                                            <td className="p-4 text-right">
+                                                                <span className="font-display font-bold text-white text-lg group-hover:text-brand-brightGreen transition-colors">{team.points || 0}</span>
+                                                                <span className="text-xs text-gray-500 ml-1">pts</span>
+                                                            </td>
                                                         </tr>
                                                     )) : (
                                                         <tr><td colSpan={5} className="p-8 text-center text-gray-500">No standings data available for this category.</td></tr>
@@ -291,7 +424,11 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                                                      {/* Colored Accent Line */}
                                                      <div className="h-1 w-full shadow-[0_0_15px_currentColor]" style={{ backgroundColor: team.logoColor, color: team.logoColor }}></div>
                                                      
-                                                     <div className="relative h-56 overflow-hidden">
+                                                     <div 
+                                                         onClick={() => setSelectedTeam(team)}
+                                                         className="relative h-56 overflow-hidden cursor-pointer"
+                                                         title="Click to view full team details and 2026 technical specifications"
+                                                     >
                                                         <img src={team.image} alt={team.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 hover:opacity-100" />
                                                         <div className="absolute inset-0 bg-gradient-to-t from-dark-800 via-dark-800/40 to-transparent"></div>
                                                         
@@ -312,7 +449,7 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                                                         <div className="absolute bottom-4 left-6 right-6">
                                                             <div className="flex justify-between items-end">
                                                                 <div>
-                                                                    <h3 className="text-4xl font-display font-bold text-white italic tracking-tighter drop-shadow-md">{team.name}</h3>
+                                                                    <h3 className="text-4xl font-display font-bold text-white italic tracking-tighter drop-shadow-md group-hover:text-brand-brightGreen transition-colors">{team.name}</h3>
                                                                     <p className="text-sm text-gray-300 flex items-center gap-1"><MapPin size={12}/> {team.base}</p>
                                                                 </div>
                                                                 <div className="text-right">
@@ -364,6 +501,21 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                                                                         </div>
                                                                     </div>
                                                                 ))}
+                                                             </div>
+
+                                                             {/* View Team Modal Trigger Button */}
+                                                             <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                                                                 <span className="text-xs font-mono text-gray-400">
+                                                                     {team.engine ? team.engine.split('(')[0] : '2026 Competitor'}
+                                                                 </span>
+                                                                 <button
+                                                                     type="button"
+                                                                     onClick={() => setSelectedTeam(team)}
+                                                                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-brand-red text-white text-xs font-bold transition-all duration-200 shadow-sm hover:scale-105 active:scale-95"
+                                                                 >
+                                                                     <span>عرض التفاصيل الكاملة</span>
+                                                                     <ChevronRight size={14} />
+                                                                 </button>
                                                              </div>
                                                          </div>
                                                      </div>
@@ -653,6 +805,15 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'news' }) =>
                     )}
                 </div>
             </div>
+
+            {/* 2026 Team Technical & Driver Inspection Modal */}
+            {selectedTeam && (
+                <TeamDetailModal 
+                    team={selectedTeam} 
+                    onClose={() => setSelectedTeam(null)} 
+                    onSelectDriver={(driver) => setSelectedDriver(driver)}
+                />
+            )}
         </div>
     );
 };

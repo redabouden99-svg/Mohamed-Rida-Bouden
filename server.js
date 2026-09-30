@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const { GoogleGenAI, Type } = require("@google/genai");
+const { botEngine } = require("./services/botEngine");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -204,6 +205,49 @@ const fallbackNews = {
 // Public Site Content
 app.get("/api/site-content", (req, res) => {
     res.json(adminConfig.siteContent || defaultSiteContent);
+});
+
+// Automated Championship Bots: Get live race results and standings
+app.get("/api/results/:series", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+        const seriesParam = req.params.series || "Formula 1";
+        const results = botEngine.getResults(seriesParam);
+        res.json(results);
+    } catch (e) {
+        console.error("Bot engine results error:", e);
+        res.status(500).json({ success: false, error: e.message || "Failed to retrieve championship results" });
+    }
+});
+
+// Automated Championship Bots: Force live sync and feed scraping
+app.post("/api/results/:series/sync", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+        const seriesParam = req.params.series || "Formula 1";
+        const updated = await botEngine.syncSeries(seriesParam);
+        res.json(updated);
+    } catch (e) {
+        console.error("Bot sync error:", e);
+        res.status(500).json({ success: false, error: e.message || "Bot sync failed" });
+    }
+});
+
+// Automated Championship Bots: Status of all bots
+app.get("/api/bots", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.json(botEngine.getAllBotStatuses());
+});
+
+// Automated Championship Bots: Reset cache to official 2026 database
+app.post("/api/results/reset", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+        const db = botEngine.resetToSeason2026();
+        res.json({ success: true, message: "Championship results database reset to 2026 season", data: db });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // API: News Endpoint (Merges custom admin news with RSS)
@@ -566,6 +610,12 @@ app.post("/api/admin/logout", requireAdminAuth, (req, res) => {
         activeSessions.delete(token);
     }
     res.json({ success: true, message: "تم تسجيل الخروج / Logged out successfully" });
+});
+
+// Any unknown API route gets a guaranteed JSON 404 response (prevents HTML/Unexpected token errors)
+app.all("/api/*", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.status(404).json({ success: false, error: "API endpoint not found", path: req.originalUrl });
 });
 
 // API Error Handler to guarantee JSON responses
