@@ -6,14 +6,16 @@ import {
     updateGeminiKey, 
     testGeminiKey, 
     updateSiteContent, 
-    changeAdminPassword, 
-    adminLogout 
+    changeAdminCredentials, 
+    adminLogout,
+    getStoredAdminUser 
 } from '../services/adminService';
 import { SiteContent, CustomArticle } from '../types';
 import { 
-    Shield, Key, Lock, Unlock, CheckCircle2, AlertTriangle, 
+    Shield, Key, Lock, CheckCircle2, AlertTriangle, 
     Sparkles, RefreshCw, Eye, EyeOff, Save, Trash2, Plus, 
-    Globe, ArrowLeft, LogOut, Cpu, Layout, FileText, ExternalLink
+    Globe, ArrowLeft, LogOut, Cpu, Layout, FileText, ExternalLink,
+    User, Bell, Edit3
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -41,13 +43,15 @@ const PRESET_IMAGES = [
 ];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated }) => {
-    // Auth State
+    // Auth State - Traditional username & password
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
-    const [passwordInput, setPasswordInput] = useState<string>('');
+    const [usernameInput, setUsernameInput] = useState<string>('bouden');
+    const [passwordInput, setPasswordInput] = useState<string>('reda');
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [loginLoading, setLoginLoading] = useState<boolean>(false);
     const [loginError, setLoginError] = useState<string | null>(null);
+    const [currentAdminUser, setCurrentAdminUser] = useState<string>('bouden');
 
     // Active Admin Tab
     const [activeTab, setActiveTab] = useState<'gemini' | 'content' | 'news' | 'security'>('gemini');
@@ -84,10 +88,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
     const [newArticleUrl, setNewArticleUrl] = useState<string>('');
 
     // Security Tab State
+    const [accountUsername, setAccountUsername] = useState<string>('bouden');
     const [currentPassword, setCurrentPassword] = useState<string>('');
     const [newPassword, setNewPassword] = useState<string>('');
     const [confirmPassword, setConfirmPassword] = useState<string>('');
-    const [changingPassword, setChangingPassword] = useState<boolean>(false);
+    const [changingCredentials, setChangingCredentials] = useState<boolean>(false);
 
     // Check existing session on mount
     useEffect(() => {
@@ -96,6 +101,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
             const valid = await adminVerify();
             setIsAuthenticated(valid);
             if (valid) {
+                setCurrentAdminUser(getStoredAdminUser());
                 loadConfig();
             }
             setCheckingAuth(false);
@@ -108,6 +114,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         try {
             const data = await fetchAdminConfig();
             setAdminConfig(data);
+            if (data.username) {
+                setCurrentAdminUser(data.username);
+                setAccountUsername(data.username);
+            }
             if (data.siteContent) {
                 const sc: SiteContent = data.siteContent;
                 setHeroTitle(sc.heroTitle || '');
@@ -133,15 +143,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         setLoginError(null);
         setLoginLoading(true);
 
-        const res = await adminLogin(passwordInput);
+        const res = await adminLogin(usernameInput, passwordInput);
         setLoginLoading(false);
 
         if (res.success) {
             setIsAuthenticated(true);
-            setPasswordInput('');
+            setCurrentAdminUser(usernameInput);
             loadConfig();
         } else {
-            setLoginError(res.message || 'كلمة المرور غير صحيحة، يرجى المحاولة مجدداً');
+            setLoginError(res.message || 'اسم المستخدم أو كلمة المرور غير صحيحة، يرجى المحاولة مجدداً');
         }
     };
 
@@ -160,7 +170,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         setStatusMessage(null);
         try {
             const res = await updateGeminiKey(apiKeyInput);
-            setStatusMessage({ type: 'success', text: res.message || 'تم حفظ المفتاح بنجاح' });
+            setStatusMessage({ type: 'success', text: res.message || 'تم حفظ المفتاح بنجاح وتفعيله' });
             setApiKeyInput('');
             loadConfig();
         } catch (err: any) {
@@ -177,7 +187,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
             const res = await testGeminiKey();
             setTestResult(res);
             if (res.success) {
-                setStatusMessage({ type: 'success', text: 'اتصال Gemini AI سليم ويعمل بكفاءة عالية!' });
+                setStatusMessage({ type: 'success', text: 'اتصال Gemini AI سليم ومستعد لتقديم التوقعات والتحليلات!' });
             } else {
                 setStatusMessage({ type: 'error', text: res.message || 'فشل اختبار المفتاح' });
             }
@@ -208,7 +218,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                 customNews: customNewsList
             };
             const res = await updateSiteContent(updated);
-            setStatusMessage({ type: 'success', text: res.message || 'تم حفظ محتوى الموقع بنجاح' });
+            setStatusMessage({ type: 'success', text: res.message || 'تم حفظ ونشر كافة التغييرات على الموقع بنجاح' });
             if (onContentUpdated) {
                 onContentUpdated(res.siteContent || updated);
             }
@@ -242,12 +252,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         setNewArticleSummary('');
         setNewArticleUrl('');
 
-        // Persist immediately
         updateSiteContent({ customNews: updated }).then(res => {
             if (onContentUpdated && res.siteContent) {
                 onContentUpdated(res.siteContent);
             }
-            setStatusMessage({ type: 'success', text: 'تمت إضافة المقال الإخباري وتحديث خلاصات الموقع' });
+            setStatusMessage({ type: 'success', text: 'تمت إضافة المقال وتحديث خلاصات الأخبار للموقع فوراً' });
         }).catch(e => {
             setStatusMessage({ type: 'error', text: e.message || 'فشل حفظ المقال' });
         });
@@ -264,47 +273,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         });
     };
 
-    const handleChangePassword = async (e: React.FormEvent) => {
+    const handleChangeCredentials = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (newPassword !== confirmPassword) {
+        if (newPassword && newPassword !== confirmPassword) {
             setStatusMessage({ type: 'error', text: 'كلمة المرور الجديدة غير متطابقة مع التأكيد' });
             return;
         }
-        if (newPassword.length < 4) {
-            setStatusMessage({ type: 'error', text: 'يجب أن تكون كلمة المرور 4 خانات على الأقل' });
-            return;
-        }
 
-        setChangingPassword(true);
+        setChangingCredentials(true);
         setStatusMessage(null);
         try {
-            const res = await changeAdminPassword(currentPassword, newPassword);
-            setStatusMessage({ type: 'success', text: res.message || 'تم تغيير كلمة المرور بنجاح' });
+            const res = await changeAdminCredentials(currentPassword, accountUsername, newPassword || undefined);
+            setStatusMessage({ type: 'success', text: res.message || 'تم تحديث بيانات الحساب بنجاح' });
+            if (res.username) {
+                setCurrentAdminUser(res.username);
+            }
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
             loadConfig();
         } catch (err: any) {
-            setStatusMessage({ type: 'error', text: err.message || 'فشل تغيير كلمة المرور' });
+            setStatusMessage({ type: 'error', text: err.message || 'فشل تغيير بيانات الحساب' });
         } finally {
-            setChangingPassword(false);
+            setChangingCredentials(false);
         }
     };
 
     // Loading View
     if (checkingAuth) {
         return (
-            <div className="min-h-screen bg-dark-900 flex items-center justify-center text-center p-6">
+            <div className="min-h-[70vh] bg-dark-900 flex items-center justify-center text-center p-6">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-red mb-4"></div>
             </div>
         );
     }
 
-    // Login Screen
+    // Login Screen: Traditional Credentials (bouden / reda)
     if (!isAuthenticated) {
         return (
             <div className="min-h-[85vh] bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900 flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-dark-800/90 border border-white/10 rounded-2xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+                <div className="max-w-md w-full bg-dark-800/95 border border-white/10 rounded-2xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
                     {/* Top Accent line */}
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-red via-brand-brightGreen to-orange-500" />
                     
@@ -316,20 +324,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                             Bouden <span className="text-brand-red">Admin</span>
                         </h2>
                         <p className="text-gray-400 text-sm mt-1">
-                            لوحة تحكم الأدمن وإدارة مفتاح الذكاء الاصطناعي
+                            تسجيل الدخول إلى لوحة التحكم المركزية
                         </p>
                     </div>
 
                     {loginError && (
-                        <div className="mb-6 p-4 rounded-xl bg-red-900/30 border border-red-500/30 text-red-200 text-sm flex items-start gap-3">
+                        <div className="mb-6 p-4 rounded-xl bg-red-900/40 border border-red-500/40 text-red-200 text-sm flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
                             <div>{loginError}</div>
                         </div>
                     )}
 
-                    <form onSubmit={handleLogin} className="space-y-5">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        {/* Username Input */}
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+                                اسم المستخدم / Username
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={usernameInput}
+                                    onChange={(e) => setUsernameInput(e.target.value)}
+                                    placeholder="bouden"
+                                    className="w-full bg-dark-900/90 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-red pr-10 text-sm font-medium"
+                                    required
+                                    autoFocus
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <User className="w-4 h-4" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Password Input */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
                                 كلمة المرور / Password
                             </label>
                             <div className="relative">
@@ -337,30 +367,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                     type={showPassword ? 'text' : 'password'}
                                     value={passwordInput}
                                     onChange={(e) => setPasswordInput(e.target.value)}
-                                    placeholder="أدخل كلمة مرور الأدمن..."
-                                    className="w-full bg-dark-900/80 border border-white/15 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent transition-all pr-12 text-sm"
+                                    placeholder="reda"
+                                    className="w-full bg-dark-900/90 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-red pr-10 text-sm font-medium"
                                     required
-                                    autoFocus
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
                                 >
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-300 flex items-center justify-between">
-                            <span>كلمة المرور الافتراضية:</span>
-                            <code className="bg-black/50 text-brand-brightGreen font-mono px-2 py-0.5 rounded font-bold">admin123</code>
+                        {/* Helper credentials notice */}
+                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-300 space-y-1">
+                            <div className="flex justify-between items-center">
+                                <span>اسم المستخدم المطلوب:</span>
+                                <code className="bg-black/50 text-brand-brightGreen font-mono px-2 py-0.5 rounded font-bold">bouden</code>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span>كلمة المرور المطلوبة:</span>
+                                <code className="bg-black/50 text-brand-brightGreen font-mono px-2 py-0.5 rounded font-bold">reda</code>
+                            </div>
                         </div>
 
                         <button
                             type="submit"
                             disabled={loginLoading}
-                            className="w-full bg-brand-red hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-brand-red/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                            className="w-full bg-brand-red hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-brand-red/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 mt-2"
                         >
                             {loginLoading ? (
                                 <RefreshCw className="w-5 h-5 animate-spin" />
@@ -390,11 +426,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
     // Authenticated Dashboard
     return (
         <div className="min-h-screen bg-dark-900 pb-20">
-            {/* Top Admin Bar */}
+            {/* Top Admin Header Bar */}
             <div className="border-b border-white/10 bg-dark-800/90 backdrop-blur-md sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-brand-red/10 border border-brand-red/30 flex items-center justify-center text-brand-red">
+                        <div className="w-10 h-10 rounded-xl bg-brand-red/10 border border-brand-red/30 flex items-center justify-center text-brand-red shadow-inner">
                             <Shield className="w-5 h-5" />
                         </div>
                         <div>
@@ -403,11 +439,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                     Bouden <span className="text-brand-red">Admin Panel</span>
                                 </h1>
                                 <span className="bg-brand-brightGreen/20 text-brand-brightGreen text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border border-brand-brightGreen/30">
-                                    LIVE
+                                    {currentAdminUser}
                                 </span>
                             </div>
                             <p className="text-xs text-gray-400">
-                                لوحة التحكم المركزية • ضبط Gemini API وإدارة المحتوى
+                                لوحة التحكم الشاملة • إعدادات الموقع ومفتاح Gemini الذكي
                             </p>
                         </div>
                     </div>
@@ -420,12 +456,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                             {adminConfig?.geminiConfigured ? (
                                 <span className="text-brand-brightGreen font-semibold flex items-center gap-1">
                                     <span className="w-2 h-2 rounded-full bg-brand-brightGreen animate-pulse"></span>
-                                    مفعل ({adminConfig?.geminiModel || '2.5-flash'})
+                                    نشط ({adminConfig?.geminiModel || '3.8-flash'})
                                 </span>
                             ) : (
                                 <span className="text-amber-400 font-semibold flex items-center gap-1">
                                     <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                                    غير محدد
+                                    بحاجة إلى مفتاح
                                 </span>
                             )}
                         </div>
@@ -463,7 +499,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                             {statusMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-amber-400" />}
                             <span>{statusMessage.text}</span>
                         </div>
-                        <button onClick={() => setStatusMessage(null)} className="text-xs opacity-60 hover:opacity-100">
+                        <button onClick={() => setStatusMessage(null)} className="text-xs opacity-60 hover:opacity-100 p-1">
                             ✕
                         </button>
                     </div>
@@ -495,7 +531,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                         }`}
                     >
                         <Layout className="w-4 h-4" />
-                        <span>محتوى الواجهة والبانر</span>
+                        <span>تعديل محتوى الواجهة والبانر</span>
                     </button>
 
                     <button
@@ -519,17 +555,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                         }`}
                     >
                         <Lock className="w-4 h-4" />
-                        <span>الأمان وكلمة المرور</span>
-                        {adminConfig?.hasDefaultPassword && (
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                        )}
+                        <span>بيانات الحساب والأمان</span>
                     </button>
                 </div>
 
                 {/* TAB 1: GEMINI API KEY */}
                 {activeTab === 'gemini' && (
                     <div className="space-y-8">
-                        {/* Status Card */}
+                        {/* Status Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-dark-800 border border-white/10 rounded-2xl p-6">
                                 <span className="text-xs uppercase text-gray-400 font-semibold tracking-wider">حالة المفتاح الحالية</span>
@@ -537,7 +570,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                     <div className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${adminConfig?.geminiConfigured ? 'bg-brand-brightGreen animate-pulse' : 'bg-amber-400'}`}></div>
                                         <span className="text-lg font-bold text-white">
-                                            {adminConfig?.geminiConfigured ? 'مفعل وجاهز' : 'غير مكتمل'}
+                                            {adminConfig?.geminiConfigured ? 'مفعل وجاهز' : 'غير متصل'}
                                         </span>
                                     </div>
                                     <span className="text-xs text-gray-400 font-mono bg-black/40 px-2 py-1 rounded">
@@ -577,7 +610,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                         تحديد وتحديث مفتاح Gemini API
                                     </h3>
                                     <p className="text-xs text-gray-400 mt-1">
-                                        المفتاح يحفظ على الخادم بشكل آمن، وتتم عبره كافة استعلامات التوقعات والتحليل الفني
+                                        يتم حفظ المفتاح على الخادم بشكل آمن وتتم عبره كافة استعلامات التوقعات والتحليل الفني
                                     </p>
                                 </div>
                                 <a
@@ -630,7 +663,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                         className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl transition-all flex items-center gap-2 border border-white/10 disabled:opacity-40"
                                     >
                                         {testingKey ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-brand-brightGreen" />}
-                                        <span>فحص واختبار المفتاح مباشرة</span>
+                                        <span>فحص واختبار الاتصال المباشر</span>
                                     </button>
                                 </div>
 
@@ -669,8 +702,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                     <div className="space-y-8">
                         {/* Hero Section Config */}
                         <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
-                            <h3 className="text-xl font-display font-bold text-white mb-2">
-                                محتوى الواجهة الرئيسية (Hero Section)
+                            <h3 className="text-xl font-display font-bold text-white mb-2 flex items-center gap-2">
+                                <Edit3 className="w-5 h-5 text-brand-red" />
+                                <span>محتوى الواجهة الرئيسية (Hero Section)</span>
                             </h3>
                             <p className="text-xs text-gray-400 mb-6">
                                 تخصيص العنوان العريض، النص الفرعي، وخلفية السباق في واجهة الموقع الرئيسية
@@ -687,7 +721,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                             value={heroTitle}
                                             onChange={(e) => setHeroTitle(e.target.value)}
                                             placeholder="RACE. ANALYZE. PREDICT."
-                                            className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                            className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red font-display tracking-wider"
                                         />
                                     </div>
                                     <div>
@@ -699,7 +733,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                             value={heroTitleHighlight}
                                             onChange={(e) => setHeroTitleHighlight(e.target.value)}
                                             placeholder="ANALYZE."
-                                            className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                            className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red font-display tracking-wider text-brand-brightGreen"
                                         />
                                     </div>
                                 </div>
@@ -746,10 +780,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
 
                                     {/* Image Preview */}
                                     {heroBgImage && (
-                                        <div className="mt-4 relative h-36 rounded-xl overflow-hidden border border-white/10">
+                                        <div className="mt-4 relative h-40 rounded-xl overflow-hidden border border-white/10">
                                             <img src={heroBgImage} alt="Preview" className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3">
-                                                <span className="text-xs text-gray-300 font-mono">معاينة خلفية الواجهة</span>
+                                                <span className="text-xs text-gray-300 font-mono">معاينة صورة خلفية الواجهة</span>
                                             </div>
                                         </div>
                                     )}
@@ -761,8 +795,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                         <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <h3 className="text-xl font-display font-bold text-white">
-                                        شريط الإعلانات والتنبيهات العلوية
+                                    <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                                        <Bell className="w-5 h-5 text-brand-brightGreen" />
+                                        <span>شريط الإعلانات والتنبيهات العلوية</span>
                                     </h3>
                                     <p className="text-xs text-gray-400">
                                         شريط يظهر في أعلى الموقع للأخبار العاجلة أو التنبيهات الاستراتيجية
@@ -833,7 +868,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                 className="bg-brand-red hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-brand-red/40 disabled:opacity-40"
                             >
                                 {savingContent ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                <span>حفظ كافة التغييرات على الموقع</span>
+                                <span>حفظ وتطبيق التغييرات على الموقع</span>
                             </button>
                         </div>
                     </div>
@@ -846,10 +881,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                         <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
                             <h3 className="text-xl font-display font-bold text-white mb-2 flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-brand-brightGreen" />
-                                <span>إضافة مقال أو خبر عاجل جديد</span>
+                                <span>إضافة خبر أو مقال تحليلي جديد</span>
                             </h3>
                             <p className="text-xs text-gray-400 mb-6">
-                                الأخبار المضافة تظهر تلقائياً في صدارة شريط الأخبار ولوحة التحليلات لزوار الموقع
+                                تظهر المقالات المضافة في صدارة شريط الأخبار ولوحة التحليلات لزوار الموقع
                             </p>
 
                             <div className="space-y-4">
@@ -862,7 +897,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                             type="text"
                                             value={newArticleTitle}
                                             onChange={(e) => setNewArticleTitle(e.target.value)}
-                                            placeholder="مثال: تحليل استراتيجي: تطورات انسيابية سيارات فورمولا 1 لموسم 2026..."
+                                            placeholder="تحليل استراتيجي: تطورات انسيابية سيارات فورمولا 1..."
                                             className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
                                         />
                                     </div>
@@ -914,7 +949,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-                                            رابط القراءة أو المصدر الخارجي (اختياري)
+                                            رابط المصدر الخارجي (اختياري)
                                         </label>
                                         <input
                                             type="text"
@@ -993,32 +1028,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                 {/* TAB 4: SECURITY */}
                 {activeTab === 'security' && (
                     <div className="max-w-2xl bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
-                        <h3 className="text-xl font-display font-bold text-white mb-2">
-                            تغيير كلمة مرور لوحة التحكم
+                        <h3 className="text-xl font-display font-bold text-white mb-2 flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-brand-red" />
+                            <span>تعديل بيانات الحساب وكلمة المرور</span>
                         </h3>
                         <p className="text-xs text-gray-400 mb-6">
-                            قم بتحديث كلمة المرور لحماية إعدادات ومفاتيح الذكاء الاصطناعي
+                            يمكنك تحديث اسم المستخدم وكلمة المرور للوحة التحكم في أي وقت
                         </p>
 
-                        {adminConfig?.hasDefaultPassword && (
-                            <div className="mb-6 p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex items-center gap-3">
-                                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                                <span>
-                                    تنبيه: أنت تستخدم كلمة المرور الافتراضية <code className="bg-black/50 px-1 py-0.5 rounded font-bold text-white">admin123</code>. يوصى بتغييرها الآن.
-                                </span>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleChangePassword} className="space-y-4">
+                        <form onSubmit={handleChangeCredentials} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-                                    كلمة المرور الحالية
+                                    اسم المستخدم
+                                </label>
+                                <input
+                                    type="text"
+                                    value={accountUsername}
+                                    onChange={(e) => setAccountUsername(e.target.value)}
+                                    placeholder="bouden"
+                                    className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+                                    كلمة المرور الحالية للتأكيد
                                 </label>
                                 <input
                                     type="password"
                                     value={currentPassword}
                                     onChange={(e) => setCurrentPassword(e.target.value)}
-                                    placeholder="أدخل كلمة المرور الحالية..."
+                                    placeholder="أدخل كلمة المرور الحالية (افتراضياً: reda)..."
                                     className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
                                     required
                                 />
@@ -1026,39 +1067,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
 
                             <div>
                                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-                                    كلمة المرور الجديدة
+                                    كلمة المرور الجديدة (اختياري)
                                 </label>
                                 <input
                                     type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="كلمة مرور جديدة (4 خانات على الأقل)..."
+                                    placeholder="كلمة مرور جديدة (اتركها فارغة إذا أردت الاحتفاظ بالحالية)..."
                                     className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
-                                    required
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
-                                    تأكيد كلمة المرور الجديدة
-                                </label>
-                                <input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="أعد كتابة كلمة المرور..."
-                                    className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
-                                    required
-                                />
-                            </div>
+                            {newPassword && (
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+                                        تأكيد كلمة المرور الجديدة
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="أعد كتابة كلمة المرور الجديدة..."
+                                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                        required={!!newPassword}
+                                    />
+                                </div>
+                            )}
 
                             <button
                                 type="submit"
-                                disabled={changingPassword}
+                                disabled={changingCredentials}
                                 className="bg-brand-red hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl transition-all flex items-center gap-2 shadow-lg disabled:opacity-40"
                             >
-                                {changingPassword ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                                <span>تحديث كلمة المرور</span>
+                                {changingCredentials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                <span>حفظ بيانات الحساب</span>
                             </button>
                         </form>
                     </div>

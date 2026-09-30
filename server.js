@@ -51,7 +51,8 @@ const defaultSiteContent = {
 };
 
 let adminConfig = {
-    adminPassword: process.env.ADMIN_PASSWORD || "admin123",
+    adminUsername: process.env.ADMIN_USERNAME || "bouden",
+    adminPassword: process.env.ADMIN_PASSWORD || "reda",
     geminiApiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || "",
     siteContent: defaultSiteContent
 };
@@ -64,6 +65,8 @@ try {
         adminConfig = {
             ...adminConfig,
             ...parsed,
+            adminUsername: parsed.adminUsername || "bouden",
+            adminPassword: parsed.adminPassword || "reda",
             siteContent: {
                 ...defaultSiteContent,
                 ...(parsed.siteContent || {})
@@ -115,13 +118,14 @@ function verifyAdminToken(token) {
 }
 
 function requireAdminAuth(req, res, next) {
+    res.setHeader("Content-Type", "application/json");
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized: Missing Bearer token" });
+        return res.status(401).json({ success: false, error: "Unauthorized: Missing Bearer token" });
     }
     const token = authHeader.substring(7).trim();
     if (!verifyAdminToken(token)) {
-        return res.status(401).json({ error: "Unauthorized: Invalid or expired session" });
+        return res.status(401).json({ success: false, error: "Unauthorized: Invalid or expired session" });
     }
     next();
 }
@@ -384,50 +388,68 @@ app.get("/api/health", (req, res) => {
 
 // ==================== ADMIN API ENDPOINTS ====================
 
-// Admin Login
+// Admin Login (Traditional credentials: username & password)
 app.post("/api/admin/login", (req, res) => {
-    const { password } = req.body;
-    if (!password) {
-        return res.status(400).json({ success: false, message: "كلمة المرور مطلوبة / Password is required" });
+    res.setHeader("Content-Type", "application/json");
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "اسم المستخدم وكلمة المرور مطلوبان / Username and password are required" 
+        });
     }
-    if (password === adminConfig.adminPassword) {
+
+    const expectedUser = (adminConfig.adminUsername || "bouden").trim().toLowerCase();
+    const expectedPass = (adminConfig.adminPassword || "reda").trim();
+
+    const inputUser = String(username).trim().toLowerCase();
+    const inputPass = String(password).trim();
+
+    if (inputUser === expectedUser && inputPass === expectedPass) {
         const token = createAdminSession();
-        return res.json({
+        return res.status(200).json({
             success: true,
             token,
+            user: { username: inputUser },
             message: "تم تسجيل الدخول بنجاح / Logged in successfully"
         });
     }
+
     return res.status(401).json({
         success: false,
-        message: "كلمة المرور غير صحيحة / Invalid password"
+        message: "اسم المستخدم أو كلمة المرور غير صحيحة / Invalid username or password"
     });
 });
 
 // Admin Verify Session
 app.get("/api/admin/verify", requireAdminAuth, (req, res) => {
-    res.json({ success: true, valid: true });
+    res.setHeader("Content-Type", "application/json");
+    res.json({ success: true, valid: true, username: adminConfig.adminUsername || "bouden" });
 });
 
 // Admin Get Config & Status
 app.get("/api/admin/config", requireAdminAuth, (req, res) => {
+    res.setHeader("Content-Type", "application/json");
     const key = adminConfig.geminiApiKey || "";
     const maskedKey = key.length > 8 ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : (key ? "****" : "");
 
     res.json({
         success: true,
+        username: adminConfig.adminUsername || "bouden",
         geminiConfigured: !!ai,
         geminiKeyMasked: maskedKey,
         geminiModel: "gemini-3.8-flash",
         siteContent: adminConfig.siteContent,
-        hasDefaultPassword: adminConfig.adminPassword === "admin123",
+        hasDefaultCredentials: (adminConfig.adminUsername === "bouden" && adminConfig.adminPassword === "reda"),
         uptimeSeconds: Math.floor(process.uptime())
     });
 });
 
 // Admin Update Gemini Key
 app.post("/api/admin/gemini-key", requireAdminAuth, (req, res) => {
-    const { apiKey } = req.body;
+    res.setHeader("Content-Type", "application/json");
+    const { apiKey } = req.body || {};
     if (typeof apiKey !== "string") {
         return res.status(400).json({ success: false, message: "صيغة المفتاح غير صالحة / Invalid key format" });
     }
@@ -449,6 +471,7 @@ app.post("/api/admin/gemini-key", requireAdminAuth, (req, res) => {
 
 // Admin Test Gemini Key
 app.post("/api/admin/test-gemini", requireAdminAuth, async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
     if (!ai) {
         return res.status(400).json({
             success: false,
@@ -481,7 +504,8 @@ app.post("/api/admin/test-gemini", requireAdminAuth, async (req, res) => {
 
 // Admin Update Site Content
 app.post("/api/admin/content", requireAdminAuth, (req, res) => {
-    const { siteContent } = req.body;
+    res.setHeader("Content-Type", "application/json");
+    const { siteContent } = req.body || {};
     if (!siteContent || typeof siteContent !== "object") {
         return res.status(400).json({ success: false, message: "محتوى غير صالح / Invalid content payload" });
     }
@@ -499,15 +523,11 @@ app.post("/api/admin/content", requireAdminAuth, (req, res) => {
     });
 });
 
-// Admin Change Password
+// Admin Change Credentials
 app.post("/api/admin/change-password", requireAdminAuth, (req, res) => {
-    const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-        return res.status(400).json({
-            success: false,
-            message: "يجب ألا تقل كلمة المرور الجديدة عن 4 أحرف / New password must be at least 4 characters"
-        });
-    }
+    res.setHeader("Content-Type", "application/json");
+    const { currentPassword, newUsername, newPassword } = req.body || {};
+
     if (currentPassword !== adminConfig.adminPassword) {
         return res.status(401).json({
             success: false,
@@ -515,23 +535,44 @@ app.post("/api/admin/change-password", requireAdminAuth, (req, res) => {
         });
     }
 
-    adminConfig.adminPassword = newPassword;
+    if (newPassword && newPassword.length < 3) {
+        return res.status(400).json({
+            success: false,
+            message: "يجب ألا تقل كلمة المرور الجديدة عن 3 أحرف / Password must be at least 3 characters"
+        });
+    }
+
+    if (newUsername && newUsername.trim()) {
+        adminConfig.adminUsername = newUsername.trim();
+    }
+    if (newPassword && newPassword.trim()) {
+        adminConfig.adminPassword = newPassword.trim();
+    }
     saveAdminConfig();
 
     res.json({
         success: true,
-        message: "تم تغيير كلمة المرور بنجاح / Password changed successfully"
+        username: adminConfig.adminUsername,
+        message: "تم تحديث بيانات الحساب بنجاح / Account credentials updated successfully"
     });
 });
 
 // Admin Logout
 app.post("/api/admin/logout", requireAdminAuth, (req, res) => {
+    res.setHeader("Content-Type", "application/json");
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
         const token = authHeader.substring(7).trim();
         activeSessions.delete(token);
     }
     res.json({ success: true, message: "تم تسجيل الخروج / Logged out successfully" });
+});
+
+// API Error Handler to guarantee JSON responses
+app.use("/api", (err, req, res, next) => {
+    console.error("API Error middleware:", err);
+    res.setHeader("Content-Type", "application/json");
+    res.status(500).json({ success: false, message: err.message || "Internal server error" });
 });
 
 // ==================== FRONTEND SERVING ====================

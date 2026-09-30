@@ -1,5 +1,6 @@
 {
-  "adminPassword": "admin123",
+  "adminUsername": "bouden",
+  "adminPassword": "reda",
   "geminiApiKey": "AIzaSyDktHt8N0WO1OdET2TYTQ_Bvi9-z28zhH4",
   "siteContent": {
     "heroTitle": "RACE. ANALYZE. PREDICT.",

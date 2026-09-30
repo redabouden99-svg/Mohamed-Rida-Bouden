@@ -1,6 +1,7 @@
 import { SiteContent } from '../types';
 
 const TOKEN_KEY = 'bms_admin_token';
+const USER_KEY = 'bms_admin_user';
 
 export const getStoredAdminToken = (): string | null => {
     try {
@@ -10,17 +11,27 @@ export const getStoredAdminToken = (): string | null => {
     }
 };
 
-export const setStoredAdminToken = (token: string): void => {
+export const setStoredAdminSession = (token: string, username?: string): void => {
     try {
         localStorage.setItem(TOKEN_KEY, token);
+        if (username) localStorage.setItem(USER_KEY, username);
     } catch (e) {
         console.error("Storage error:", e);
+    }
+};
+
+export const getStoredAdminUser = (): string => {
+    try {
+        return localStorage.getItem(USER_KEY) || 'bouden';
+    } catch {
+        return 'bouden';
     }
 };
 
 export const clearStoredAdminToken = (): void => {
     try {
         localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
     } catch (e) {
         console.error("Storage error:", e);
     }
@@ -30,15 +41,38 @@ const getAuthHeaders = (): Record<string, string> => {
     const token = getStoredAdminToken();
     return {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 };
 
+// Safe JSON parser to completely eliminate "Unexpected token 'T', not valid JSON" errors
+async function safeJsonParse(res: Response): Promise<any> {
+    const text = await res.text();
+    if (!text || text.trim() === '') {
+        return { success: res.ok, status: res.status };
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        return {
+            success: false,
+            message: text.length > 200 ? text.substring(0, 200) + '...' : text,
+            status: res.status
+        };
+    }
+}
+
 export const fetchSiteContent = async (): Promise<SiteContent> => {
     try {
-        const res = await fetch('/api/site-content');
+        const res = await fetch('/api/site-content', {
+            headers: { 'Accept': 'application/json' }
+        });
         if (res.ok) {
-            return await res.json();
+            const data = await safeJsonParse(res);
+            if (data && typeof data === 'object') {
+                return data;
+            }
         }
     } catch (e) {
         console.warn("Failed to fetch dynamic site content:", e);
@@ -56,16 +90,22 @@ export const fetchSiteContent = async (): Promise<SiteContent> => {
     };
 };
 
-export const adminLogin = async (password: string): Promise<{ success: boolean; token?: string; message?: string }> => {
+export const adminLogin = async (username: string, password: string): Promise<{ success: boolean; token?: string; message?: string; user?: any }> => {
     try {
         const res = await fetch('/api/admin/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                username: username.trim(), 
+                password: password.trim() 
+            })
         });
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         if (res.ok && data.success && data.token) {
-            setStoredAdminToken(data.token);
+            setStoredAdminSession(data.token, data.user?.username || username);
         }
         return data;
     } catch (err: any) {
@@ -80,7 +120,12 @@ export const adminVerify = async (): Promise<boolean> => {
         const res = await fetch('/api/admin/verify', {
             headers: getAuthHeaders()
         });
-        return res.ok;
+        if (!res.ok) {
+            clearStoredAdminToken();
+            return false;
+        }
+        const data = await safeJsonParse(res);
+        return Boolean(data.success && data.valid);
     } catch {
         return false;
     }
@@ -90,8 +135,11 @@ export const fetchAdminConfig = async () => {
     const res = await fetch('/api/admin/config', {
         headers: getAuthHeaders()
     });
-    if (!res.ok) throw new Error("Failed to fetch admin config");
-    return await res.json();
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || "Failed to fetch admin config");
+    }
+    return data;
 };
 
 export const updateGeminiKey = async (apiKey: string) => {
@@ -100,8 +148,10 @@ export const updateGeminiKey = async (apiKey: string) => {
         headers: getAuthHeaders(),
         body: JSON.stringify({ apiKey })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to update Gemini key");
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update Gemini key");
+    }
     return data;
 };
 
@@ -110,8 +160,7 @@ export const testGeminiKey = async () => {
         method: 'POST',
         headers: getAuthHeaders()
     });
-    const data = await res.json();
-    return data;
+    return await safeJsonParse(res);
 };
 
 export const updateSiteContent = async (siteContent: Partial<SiteContent>) => {
@@ -120,19 +169,26 @@ export const updateSiteContent = async (siteContent: Partial<SiteContent>) => {
         headers: getAuthHeaders(),
         body: JSON.stringify({ siteContent })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to update site content");
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update site content");
+    }
     return data;
 };
 
-export const changeAdminPassword = async (currentPassword: string, newPassword: string) => {
+export const changeAdminCredentials = async (currentPassword: string, newUsername?: string, newPassword?: string) => {
     const res = await fetch('/api/admin/change-password', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({ currentPassword, newUsername, newPassword })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to change password");
+    const data = await safeJsonParse(res);
+    if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update credentials");
+    }
+    if (newUsername) {
+        localStorage.setItem(USER_KEY, newUsername);
+    }
     return data;
 };
 
