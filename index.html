@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouden Motorsport</title>
+    <meta name="description" content="An AI-powered motorsport analysis platform providing live insights, predictions, and curated news for F1, MotoGP, WEC, and IMSA using the Gemini API.">
+    <meta property="og:title" content="Bouden Motorsport">
+    <meta property="og:description" content="An AI-powered motorsport analysis platform providing live insights, predictions, and curated news for F1, MotoGP, WEC, and IMSA using the Gemini API.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Russo+One&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Russo One', 'sans-serif'],
+                    },
+                    colors: {
+                        f1: '#b30000',
+                        motogp: '#990000',
+                        wec: '#006600',
+                        imsa: '#004d26',
+                        gtwc: '#d6001c',
+                        dark: {
+                            900: '#0d0d0d',
+                            800: '#1a1a1a',
+                            700: '#333333',
+                        },
+                        brand: {
+                            red: '#ff3333',
+                            green: '#006600',
+                            hoverGreen: '#00aa44',
+                            brightGreen: '#00ff66'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d0d0d; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4d4d4d; 
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-white min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
