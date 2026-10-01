@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
+import RaceWeekendCountdown from './components/RaceWeekendCountdown';
 import { SeriesId, SiteContent } from './types';
 import { fetchSiteContent } from './services/adminService';
 import { getStoredUser, UserAccount } from './services/authService';
@@ -231,11 +232,12 @@ function App() {
             <>
               <Hero 
                 onExplore={() => {
-                  const element = document.getElementById('series-selector');
+                  const element = document.getElementById('race-weekend') || document.getElementById('series-selector');
                   element?.scrollIntoView({ behavior: 'smooth' });
                 }} 
                 siteContent={siteContent}
               />
+              <RaceWeekendCountdown onSelectSeries={handleSelectSeries} />
               <div id="series-selector">
                 <SeriesSelector onSelect={handleSelectSeries} />
               </div>

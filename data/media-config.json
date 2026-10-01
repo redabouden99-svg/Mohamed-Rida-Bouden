@@ -1,0 +1,22 @@
+{
+  "championshipLogos": {
+    "Formula 1": "https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg",
+    "MotoGP": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Moto_Gp_logo.svg",
+    "WEC": "https://upload.wikimedia.org/wikipedia/commons/e/e8/FIA_WEC_logo.svg",
+    "IMSA": "https://upload.wikimedia.org/wikipedia/commons/d/d4/IMSA_WeatherTech_SportsCar_Championship_logo.svg",
+    "GT World Challenge": "https://upload.wikimedia.org/wikipedia/commons/7/77/GT_World_Challenge_logo.svg",
+    "DTM": "https://upload.wikimedia.org/wikipedia/commons/e/ee/DTM_Logo_2023.svg"
+  },
+  "championshipImages": {
+    "Formula 1": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1200&auto=format&fit=crop",
+    "MotoGP": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200&auto=format&fit=crop",
+    "WEC": "https://images.unsplash.com/photo-1592634976722-13b3c3c78864?q=80&w=1200&auto=format&fit=crop",
+    "IMSA": "https://images.unsplash.com/photo-1558564244-64506927d2c3?q=80&w=1200&auto=format&fit=crop",
+    "GT World Challenge": "https://images.unsplash.com/photo-1628185016593-3d0d8299d63c?q=80&w=1200&auto=format&fit=crop",
+    "DTM": "https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop"
+  },
+  "teamLogos": {},
+  "teamImages": {},
+  "driverImages": {},
+  "heroBgImage": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=2400&auto=format&fit=crop"
+}

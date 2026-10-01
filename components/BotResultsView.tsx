@@ -102,18 +102,22 @@ export const BotResultsView: React.FC<BotResultsViewProps> = ({
                         </div>
                     </div>
 
-                    {/* Quick Bot Sync Metadata Card */}
-                    <div className="bg-black/50 backdrop-blur-md p-4 rounded-2xl border border-white/10 shrink-0 min-w-[240px]">
+                    {/* Official Timing Classification Badge */}
+                    <div className="bg-black/60 backdrop-blur-md p-4 rounded-2xl border border-white/10 shrink-0 min-w-[220px]">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[11px] font-mono text-gray-400 uppercase font-bold">Bot Telemetry Source</span>
-                            <span className="inline-block w-2 h-2 rounded-full bg-brand-brightGreen" />
+                            <span className="text-[11px] font-mono text-gray-400 uppercase font-bold tracking-wider">Classification Status</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-brand-brightGreen font-bold bg-brand-brightGreen/10 px-2 py-0.5 rounded-full border border-brand-brightGreen/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-brightGreen animate-pulse" />
+                                Confirmed
+                            </span>
                         </div>
-                        <div className="text-xs font-semibold text-white truncate max-w-[220px]" title={bot.feedSource}>
-                            {bot.feedSource}
+                        <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>Official Timing Data</span>
                         </div>
                         <div className="mt-2 pt-2 border-t border-white/10 flex justify-between text-[11px] text-gray-400 font-mono">
-                            <span>Cycle #{bot.syncCount}</span>
-                            <span className="text-brand-brightGreen">{bot.pingMs}ms latency</span>
+                            <span>Season 2026</span>
+                            <span className="text-gray-300">Verified Results</span>
                         </div>
                     </div>
                 </div>

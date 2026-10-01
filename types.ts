@@ -3,15 +3,32 @@ export enum SeriesId {
     MOTOGP = 'MotoGP',
     WEC = 'WEC',
     IMSA = 'IMSA',
-    GT_WORLD_CHALLENGE = 'GT World Challenge'
+    GT_WORLD_CHALLENGE = 'GT World Challenge',
+    DTM = 'DTM'
 }
 
 export interface NewsItem {
+    id?: string;
     title: string;
     summary: string;
+    content?: string;
     source: string;
     url: string;
     date: string;
+    image?: string;
+    category?: string;
+    author?: string;
+    readTime?: string;
+    tags?: string[];
+}
+
+export interface MediaOverrides {
+    championshipLogos?: Record<string, string>;
+    championshipImages?: Record<string, string>;
+    teamLogos?: Record<string, string>;
+    teamImages?: Record<string, string>;
+    driverImages?: Record<string, string>;
+    heroBgImage?: string;
 }
 
 export interface Prediction {

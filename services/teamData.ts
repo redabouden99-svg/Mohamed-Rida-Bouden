@@ -24,15 +24,15 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     logo: 'https://upload.wikimedia.org/wikipedia/en/6/66/McLaren_Racing_logo.svg',
                     image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1200&auto=format&fit=crop',
                     history: 'Reigning Constructors World Champions. Founded by Bruce McLaren in 1963, McLaren is one of the most storied names in motorsport history.',
-                    points: 385,
-                    rank: 1,
+                    points: 395,
+                    rank: 2,
                     drivers: [
                         { 
                             name: 'Lando Norris', 
                             number: 4, 
                             nationality: 'GBR',
                             image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 0, wins: 4, podiums: 26 },
+                            stats: { titles: 0, wins: 8, podiums: 36 },
                             bio: 'McLaren\'s long-term leader and Grand Prix winner. Known for razor-sharp qualifying pace and exceptional tire management.'
                         },
                         { 
@@ -40,7 +40,7 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                             number: 81, 
                             nationality: 'AUS',
                             image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 0, wins: 2, podiums: 10 },
+                            stats: { titles: 0, wins: 4, podiums: 16 },
                             bio: 'The ice-cool Australian prodigy. Won F3 and F2 championships as a rookie and already a multiple F1 race winner.'
                         }
                     ]
@@ -62,15 +62,15 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     logo: 'https://upload.wikimedia.org/wikipedia/de/c/c0/Scuderia_Ferrari_Logo.svg',
                     image: 'https://images.unsplash.com/photo-1596696142104-633045237731?q=80&w=1200&auto=format&fit=crop',
                     history: 'The oldest and most decorated constructor in Formula 1 history, competing in every season since 1950. The 2026 season marks the historic dream partnership with Lewis Hamilton.',
-                    points: 362,
-                    rank: 2,
+                    points: 374,
+                    rank: 3,
                     drivers: [
                         { 
                             name: 'Lewis Hamilton', 
                             number: 44, 
                             nationality: 'GBR',
                             image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 7, wins: 105, podiums: 202 },
+                            stats: { titles: 7, wins: 108, podiums: 211 },
                             bio: 'Seven-time World Champion and statistically the greatest driver in F1 history. The Briton embarks on a legendary chapter wearing the iconic Maranello red.'
                         },
                         { 
@@ -78,7 +78,7 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                             number: 16, 
                             nationality: 'MON',
                             image: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 0, wins: 8, podiums: 43 },
+                            stats: { titles: 0, wins: 10, podiums: 50 },
                             bio: 'Monaco\'s hometown hero and Ferrari\'s emotional core. Revered for blistering qualifying speed and supreme technical mastery on street circuits.'
                         }
                     ]
@@ -100,21 +100,21 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     logo: 'https://upload.wikimedia.org/wikipedia/de/c/c4/Red_Bull_Racing_logo.svg',
                     image: 'https://images.unsplash.com/photo-1649931818231-50e8d0e0638c?q=80&w=1200&auto=format&fit=crop',
                     history: 'A dynamic powerhouse that reshaped F1 modern engineering. Dominant champion in multiple eras with Vettel and Verstappen, now partnering with Ford for the 2026 PU regulations.',
-                    points: 318,
-                    rank: 3,
+                    points: 312,
+                    rank: 4,
                     drivers: [
                         { 
                             name: 'Max Verstappen', 
                             number: 1, 
                             nationality: 'NED', 
                             image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 4, wins: 64, podiums: 114 },
+                            stats: { titles: 4, wins: 67, podiums: 123 },
                             bio: 'Four-time World Champion and the benchmark of ruthless precision and aggression. Holds all-time records for single-season dominance.'
                         },
                         { 
                             name: 'Liam Lawson', 
                             number: 30, 
-                            nationality: 'NZL',
+                            nationality: 'NZL', 
                             image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop',
                             stats: { titles: 0, wins: 0, podiums: 1 },
                             bio: 'The combative Kiwi racer earns a full-time senior seat after proving his tenacity in high-pressure substitute appearances and sprint battles.'
@@ -137,25 +137,25 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     logoColor: '#00d2be',
                     logo: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Mercedes_AMG_Petronas_F1_Logo.svg',
                     image: 'https://images.unsplash.com/photo-1625902347278-651d69db2992?q=80&w=1200&auto=format&fit=crop',
-                    history: 'Engineered an unprecedented eight consecutive Constructors World Titles (2014-2021). Enters 2026 with an all-new dynamic youthful British-Italian lineup.',
-                    points: 215,
-                    rank: 4,
+                    history: 'Engineered an unprecedented eight consecutive Constructors World Titles (2014-2021). Leading the 2026 World Championship with George Russell and Kimi Antonelli dominating recent rounds.',
+                    points: 418,
+                    rank: 1,
                     drivers: [
                         { 
                             name: 'George Russell', 
                             number: 63, 
                             nationality: 'GBR', 
                             image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 0, wins: 3, podiums: 16 },
-                            bio: 'Now the established team leader at Mercedes. Combines blistering single-lap speed with methodical engineering feedback.'
+                            stats: { titles: 0, wins: 8, podiums: 27 },
+                            bio: 'Leading the 2026 World Drivers Championship with Mercedes. Combines blistering single-lap speed with methodical engineering feedback.'
                         },
                         { 
                             name: 'Kimi Antonelli', 
                             number: 12, 
-                            nationality: 'ITA',
+                            nationality: 'ITA', 
                             image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=600&auto=format&fit=crop',
-                            stats: { titles: 0, wins: 0, podiums: 0 },
-                            bio: 'The most anticipated Italian teenage prodigy in decades. Fast-tracked through junior formulae into the premier Silver Arrows seat.'
+                            stats: { titles: 0, wins: 2, podiums: 8 },
+                            bio: 'The sensational Italian prodigy winning multiple Grands Prix in his debut 2026 season for the Silver Arrows.'
                         }
                     ]
                 },
@@ -1845,6 +1845,138 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     drivers: [
                         { name: 'Alessio Picariello', number: 911, nationality: 'BEL', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 15, podiums: 34 }, bio: 'Porsche Selected Driver and reigning GT World Challenge Asia champion.' },
                         { name: 'Vutthikorn Inthraphuvasak', number: 911, nationality: 'THA', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 8, podiums: 25 }, bio: 'Thailand\'s most successful international GT driver.' }
+                    ]
+                }
+            ];
+
+        // ==========================================
+        // 6. DTM (DEUTSCHE TOURENWAGEN MASTERS) - 2026 GRID
+        // ==========================================
+        case SeriesId.DTM:
+            return [
+                {
+                    id: 'schubert_motorsport_dtm',
+                    name: 'Schubert Motorsport',
+                    fullName: 'Schubert Motorsport (BMW M Team)',
+                    principal: 'Torsten Schubert',
+                    base: 'Oschersleben, Saxony-Anhalt, Germany',
+                    car: 'BMW M4 GT3 EVO',
+                    category: 'GT3 Pro',
+                    engine: 'BMW M TwinPower Turbo 3.0L Inline-6 (P58)',
+                    chassis: 'BMW M Motorsport Carbon-CFRP Cell',
+                    technicalDirector: 'Florian Rinkes',
+                    sponsors: ['Shell', 'RoboMarkets', 'Puma', 'BMW M Performance'],
+                    firstEntry: '1999 (DTM debut: 2022)',
+                    worldChampionships: 3,
+                    points: 356,
+                    rank: 1,
+                    logoColor: '#0066b1',
+                    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg',
+                    image: 'https://images.unsplash.com/photo-1555353540-64580b51c258?q=80&w=1200&auto=format&fit=crop',
+                    history: 'Championship-winning BMW factory supported squad leading the 2026 DTM standings with triple DTM champion René Rast and Sheldon van der Linde.',
+                    drivers: [
+                        { name: 'René Rast', number: 33, nationality: 'GER', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop', stats: { titles: 3, wins: 28, podiums: 54 }, bio: 'Three-time DTM Champion and one of the most prolific touring car masters in motorsport history.' },
+                        { name: 'Sheldon van der Linde', number: 31, nationality: 'RSA', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 6, podiums: 16 }, bio: '2022 DTM World Champion and BMW factory ace known for aggressive, precise racecraft.' }
+                    ]
+                },
+                {
+                    id: 'abt_sportsline_dtm',
+                    name: 'Abt Sportsline',
+                    fullName: 'Red Bull Team ABT (Lamborghini)',
+                    principal: 'Thomas Biermaier',
+                    base: 'Kempten, Allgäu, Bavaria, Germany',
+                    car: 'Lamborghini Huracán GT3 EVO2',
+                    category: 'GT3 Pro',
+                    engine: 'Lamborghini 5.2L Naturally Aspirated 90° V10',
+                    chassis: 'Carbon-Aluminum Hybrid Spaceframe',
+                    technicalDirector: 'Martin Brand',
+                    sponsors: ['Red Bull', 'Sonnenschein', 'Schaeffler', 'H&R'],
+                    firstEntry: '2000',
+                    worldChampionships: 5,
+                    points: 346,
+                    rank: 2,
+                    logoColor: '#ffcc00',
+                    logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Lamborghini_Logo.svg',
+                    image: 'https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?q=80&w=1200&auto=format&fit=crop',
+                    history: 'One of DTM\'s most decorated racing dynasties. Partnered with Lamborghini Squadra Corse and Red Bull in pursuit of the 2026 title.',
+                    drivers: [
+                        { name: 'Kelvin van der Linde', number: 3, nationality: 'RSA', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 8, podiums: 24 }, bio: 'Reigning DTM race winner and GT3 specialist renowned for qualifying speed and race execution.' },
+                        { name: 'Ricardo Feller', number: 7, nationality: 'SUI', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop', stats: { titles: 0, wins: 4, podiums: 14 }, bio: 'Swiss young gun who established himself as a fierce front-runner across European GT sprint races.' }
+                    ]
+                },
+                {
+                    id: 'winward_racing_dtm',
+                    name: 'Mercedes-AMG Team Winward',
+                    fullName: 'Mercedes-AMG Team Winward Racing',
+                    principal: 'Christian Hohenadel',
+                    base: 'Altendiez, Rhineland-Palatinate, Germany',
+                    car: 'Mercedes-AMG GT3 Evo',
+                    category: 'GT3 Pro',
+                    engine: 'Mercedes-AMG 6.2L Naturally Aspirated V8 (M159)',
+                    chassis: 'Aluminum Spaceframe with Carbon Safety Cell',
+                    technicalDirector: 'Russell Ward',
+                    sponsors: ['Mann-Filter', 'Remus', 'Puma', 'Ravenol'],
+                    firstEntry: '2021',
+                    worldChampionships: 2,
+                    points: 332,
+                    rank: 3,
+                    logoColor: '#00d2be',
+                    logo: 'https://upload.wikimedia.org/wikipedia/commons/9/90/Mercedes-Logo.svg',
+                    image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=1200&auto=format&fit=crop',
+                    history: 'The reigning powerhouse for Mercedes-AMG Customer Racing in DTM, sporting the iconic yellow and green "Mamba" livery.',
+                    drivers: [
+                        { name: 'Maro Engel', number: 130, nationality: 'GER', image: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 5, podiums: 20 }, bio: 'Mercedes-AMG factory brand ambassador, Macau GT winner and veteran DTM race winner.' },
+                        { name: 'Lucas Auer', number: 22, nationality: 'AUT', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop', stats: { titles: 0, wins: 9, podiums: 22 }, bio: 'Austrian ace and multiple DTM race winner who consistently challenges for the overall title.' }
+                    ]
+                },
+                {
+                    id: 'manthey_ema_dtm',
+                    name: 'Manthey EMA',
+                    fullName: 'Manthey EMA Porsche',
+                    principal: 'Nicolas Raeder',
+                    base: 'Meuspath, Nürburgring, Germany',
+                    car: 'Porsche 911 GT3 R (992)',
+                    category: 'GT3 Pro',
+                    engine: 'Porsche 4.2L Water-Cooled Naturally Aspirated Boxer-6',
+                    chassis: 'Porsche 992 Aluminum-Steel Composite',
+                    technicalDirector: 'Patrick Arkenau',
+                    sponsors: ['EMA Motorsport', 'Mobil 1', 'Michelin', 'Porsche Motorsport'],
+                    firstEntry: '2023',
+                    worldChampionships: 2,
+                    points: 288,
+                    rank: 4,
+                    logoColor: '#d5001c',
+                    logo: 'https://upload.wikimedia.org/wikipedia/de/2/2d/Porsche_Wappen.svg',
+                    image: 'https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop',
+                    history: 'Famous for the fan-favourite neon yellow-green "Grello" livery. Manthey dominated the 2023 DTM championship and continues at the front.',
+                    drivers: [
+                        { name: 'Thomas Preining', number: 91, nationality: 'AUT', image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 6, podiums: 18 }, bio: '2023 DTM World Champion and Porsche official works driver with supreme defensive driving skill.' },
+                        { name: 'Ayhancan Güven', number: 90, nationality: 'TUR', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 0, wins: 1, podiums: 5 }, bio: 'Bathurst 12 Hour champion and Turkey\'s premier international GT racing star.' }
+                    ]
+                },
+                {
+                    id: 'ssr_performance_dtm',
+                    name: 'SSR Performance',
+                    fullName: 'SSR Performance (Lamborghini Squadra Corse)',
+                    principal: 'Stefan Schlund',
+                    base: 'Munich, Bavaria, Germany',
+                    car: 'Lamborghini Huracán GT3 EVO2',
+                    category: 'GT3 Pro',
+                    engine: 'Lamborghini 5.2L Naturally Aspirated V10',
+                    chassis: 'Hybrid Carbon & Aluminum Spaceframe',
+                    technicalDirector: 'Mario Schuhbauer',
+                    sponsors: ['SSR Performance', 'Lamborghini', 'Ravenol'],
+                    firstEntry: '2021',
+                    worldChampionships: 1,
+                    points: 242,
+                    rank: 5,
+                    logoColor: '#ffdd00',
+                    logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Lamborghini_Logo.svg',
+                    image: 'https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?q=80&w=1200&auto=format&fit=crop',
+                    history: '2024 DTM Drivers Champions with Mirko Bortolotti, operating out of Munich with factory Lamborghini support.',
+                    drivers: [
+                        { name: 'Mirko Bortolotti', number: 92, nationality: 'ITA', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 5, podiums: 19 }, bio: '2024 DTM Champion, Daytona 24h winner and premier Lamborghini Squadra Corse factory driver.' },
+                        { name: 'Nicki Thiim', number: 94, nationality: 'DEN', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 3, podiums: 9 }, bio: 'Two-time FIA WEC World Champion brings fiery personality and blistering speed to DTM.' }
                     ]
                 }
             ];

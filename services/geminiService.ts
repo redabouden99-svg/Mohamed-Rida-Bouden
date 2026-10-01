@@ -30,6 +30,12 @@ const fallbackPredictions: Record<SeriesId, Prediction> = {
         podium: ["Team WRT (BMW M4 GT3)", "AF Corse (Ferrari 296 GT3)", "Comtoyou Racing (Aston Martin)"],
         reasoning: "BMW's straight-line pace combined with consistent pro driver stints give them an edge in both sprint and endurance cup rounds.",
         confidence: 78
+    },
+    [SeriesId.DTM]: {
+        winner: "Kelvin van der Linde (Abt Sportsline)",
+        podium: ["Kelvin van der Linde", "René Rast", "Thomas Preining"],
+        reasoning: "Abt Sportsline's tire optimization and aggressive qualifying performance provide the edge on tight German and Austrian road courses.",
+        confidence: 84
     }
 };
 
@@ -78,6 +84,15 @@ const fallbackAnalysis: Record<SeriesId, AnalysisReport> = {
             "Track limit penalties and safety car restart clusters"
         ],
         trackConditions: "Dry conditions with potential gusty winds affecting braking stability into corner entry."
+    },
+    [SeriesId.DTM]: {
+        technicalInsight: "Sprint format with solo drivers places tremendous emphasis on pit-stop wheel change speed and immediate cold-tire outlap pace with no driver-assist launch aids.",
+        keyFactors: [
+            "Sub-7 second performance pit stops by crew",
+            "Cold Pirelli tire pressure ramping on outlap",
+            "Aggressive curb riding over sausage kerbs at the chicane"
+        ],
+        trackConditions: "High ambient track temperatures with abrasive asphalt causing rapid degradation on rear left tires."
     }
 };
 

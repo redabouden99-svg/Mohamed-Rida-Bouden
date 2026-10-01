@@ -13,6 +13,7 @@ import {
 import TeamDetailModal from './TeamDetailModal';
 import BotResultsView from './BotResultsView';
 import HistoricalStandingsView from './HistoricalStandingsView';
+import NewsReaderModal from './NewsReaderModal';
 
 interface DashboardProps {
     series: SeriesId;
@@ -42,6 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
     // Team & Driver Modal States
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+    const [readingArticle, setReadingArticle] = useState<NewsItem | null>(null);
 
     const isMounted = useRef(true);
 
@@ -161,6 +163,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
             case SeriesId.MOTOGP: return 'text-motogp border-motogp shadow-motogp/50';
             case SeriesId.WEC: return 'text-wec border-wec shadow-wec/50';
             case SeriesId.IMSA: return 'text-imsa border-imsa shadow-imsa/50';
+            case SeriesId.GT_WORLD_CHALLENGE: return 'text-gtwc border-gtwc shadow-gtwc/50';
+            case SeriesId.DTM: return 'text-sky-500 border-sky-500 shadow-sky-500/50';
             default: return 'text-white border-white';
         }
     };
@@ -171,6 +175,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
             case SeriesId.MOTOGP: return 'bg-motogp';
             case SeriesId.WEC: return 'bg-wec';
             case SeriesId.IMSA: return 'bg-imsa';
+            case SeriesId.GT_WORLD_CHALLENGE: return 'bg-gtwc';
+            case SeriesId.DTM: return 'bg-sky-600';
             default: return 'bg-white';
         }
     }
@@ -181,6 +187,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
             case SeriesId.MOTOGP: return 'from-motogp/20 to-transparent';
             case SeriesId.WEC: return 'from-wec/20 to-transparent';
             case SeriesId.IMSA: return 'from-imsa/20 to-transparent';
+            case SeriesId.GT_WORLD_CHALLENGE: return 'from-gtwc/20 to-transparent';
+            case SeriesId.DTM: return 'from-sky-600/20 to-transparent';
             default: return 'from-white/20 to-transparent';
         }
     }
@@ -288,31 +296,6 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                                 <span className="text-brand-brightGreen font-semibold">{botData?.bot?.pingMs || 42}ms latency</span>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Manual Sync Button */}
-                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                        {syncToast && (
-                            <span className={`text-xs font-mono font-bold animate-in fade-in duration-200 ${
-                                syncToast.type === 'error' ? 'text-red-400' : 'text-brand-brightGreen'
-                            }`}>
-                                {syncToast.message}
-                            </span>
-                        )}
-                        <button
-                            type="button"
-                            disabled={syncingBot}
-                            onClick={handleManualBotSync}
-                            className={`group inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold font-mono tracking-wider transition-all duration-300 shadow-lg ${
-                                syncingBot
-                                    ? 'bg-dark-700 text-gray-400 cursor-not-allowed border border-white/10'
-                                    : 'bg-white/10 hover:bg-brand-red text-white hover:shadow-[0_0_20px_rgba(255,51,51,0.5)] border border-white/15 hover:border-brand-red active:scale-95'
-                            }`}
-                            title="تحديث فوري وتوليد أحدث نتائج السباقات والتصفيات عبر البوت"
-                        >
-                            <RefreshCw className={`w-3.5 h-3.5 ${syncingBot ? 'animate-spin text-brand-brightGreen' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                            <span>{syncingBot ? 'جاري المزامنة...' : 'Manual Sync 🔄 (تحديث فوري)'}</span>
-                        </button>
                     </div>
                 </div>
 
@@ -644,19 +627,34 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {newsData.news.map((item, idx) => (
-                                                <div key={idx} className="group relative bg-dark-800/80 backdrop-blur-sm border border-white/5 p-6 rounded-2xl hover:bg-dark-700/80 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/50 overflow-hidden">
+                                                <div 
+                                                    key={idx} 
+                                                    onClick={() => setReadingArticle(item)}
+                                                    className="group relative bg-dark-800/80 backdrop-blur-sm border border-white/10 p-6 rounded-2xl hover:bg-dark-700/80 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/50 overflow-hidden cursor-pointer"
+                                                >
                                                     <div className={`absolute top-0 left-0 w-1 h-full ${getSeriesBg()} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
                                                     <div className="flex justify-between items-start mb-3">
-                                                        <span className="text-xs font-bold uppercase tracking-wider text-gray-500 bg-black/30 px-2 py-1 rounded">{item.source}</span>
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 bg-black/40 px-2.5 py-1 rounded-lg border border-white/5">{item.source}</span>
                                                         <span className="text-xs text-gray-500 font-mono">{item.date}</span>
                                                     </div>
                                                     <h3 className="text-xl font-bold text-white mb-3 group-hover:text-brand-brightGreen transition-colors">{item.title}</h3>
                                                     <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-3 group-hover:text-gray-200">{item.summary}</p>
-                                                    {item.url && (
-                                                         <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-gray-400 group-hover:text-white flex items-center gap-1 uppercase font-bold tracking-wide transition-colors">
-                                                             Read Full Story <ExternalLink size={12} className="group-hover:translate-x-1 transition-transform" />
-                                                         </a>
-                                                    )}
+                                                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                                        <span className="text-xs text-brand-red font-bold flex items-center gap-1">
+                                                            قراءة المقال والتحليل الفني →
+                                                        </span>
+                                                        {item.url && (
+                                                            <a 
+                                                                href={item.url} 
+                                                                target="_blank" 
+                                                                rel="noreferrer" 
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="text-xs text-gray-400 hover:text-white flex items-center gap-1 uppercase font-bold tracking-wide transition-colors"
+                                                            >
+                                                                Official Source <ExternalLink size={12} />
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -847,6 +845,12 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                     onSelectDriver={(driver) => setSelectedDriver(driver)}
                 />
             )}
+
+            {/* In-Depth Article Reader Modal */}
+            <NewsReaderModal 
+                article={readingArticle} 
+                onClose={() => setReadingArticle(null)} 
+            />
         </div>
     );
 };

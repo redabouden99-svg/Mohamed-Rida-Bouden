@@ -77,9 +77,11 @@ const Hero: React.FC<HeroProps> = ({ onExplore, siteContent }) => {
                         
                         <div className="hidden sm:flex items-center gap-2 opacity-90">
                             <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">F1®</span>
-                            <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">WEC</span>
                             <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">MOTOGP™</span>
+                            <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">WEC</span>
                             <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">IMSA</span>
+                            <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">GTWC</span>
+                            <span className="font-display font-bold text-xs tracking-widest border border-white/20 px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-gray-200">DTM</span>
                         </div>
                     </div>
 

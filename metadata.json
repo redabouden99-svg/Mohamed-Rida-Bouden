@@ -1,6 +1,6 @@
 {
   "name": "Bouden Motorsport",
-  "description": "An AI-powered motorsport analysis platform providing live insights, predictions, and curated news for F1, MotoGP, WEC, and IMSA using the Gemini API.",
+  "description": "An AI-powered motorsport analysis platform providing live insights, predictions, championship standings, and archives for F1, MotoGP, WEC, IMSA, GT World Challenge, and DTM.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

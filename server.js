@@ -97,6 +97,38 @@ function saveAdminConfig() {
     }
 }
 
+// ==================== MEDIA CONFIGURATION ====================
+const MEDIA_CONFIG_FILE = path.join(__dirname, "data", "media-config.json");
+let mediaConfig = {
+    championshipLogos: {},
+    championshipImages: {},
+    teamLogos: {},
+    teamImages: {},
+    driverImages: {},
+    heroBgImage: ""
+};
+
+try {
+    if (fs.existsSync(MEDIA_CONFIG_FILE)) {
+        const parsedMedia = JSON.parse(fs.readFileSync(MEDIA_CONFIG_FILE, "utf8"));
+        if (parsedMedia && typeof parsedMedia === "object") {
+            mediaConfig = { ...mediaConfig, ...parsedMedia };
+        }
+    }
+} catch (e) {
+    console.error("Error reading media config file:", e);
+}
+
+function saveMediaConfigFile() {
+    try {
+        const dir = path.dirname(MEDIA_CONFIG_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(MEDIA_CONFIG_FILE, JSON.stringify(mediaConfig, null, 2), "utf8");
+    } catch (e) {
+        console.error("Error saving media config file:", e);
+    }
+}
+
 // In-memory active admin sessions
 const activeSessions = new Map(); // token -> { createdAt, expiresAt }
 
@@ -171,7 +203,8 @@ const feeds = {
     motogp: "https://www.motorsport.com/rss/motogp/news/",
     wec: "https://www.motorsport.com/rss/wec/news/",
     imsa: "https://www.motorsport.com/rss/imsa/news/",
-    gtwc: "https://www.motorsport.com/rss/gt/news/"
+    gtwc: "https://www.motorsport.com/rss/gt/news/",
+    dtm: "https://www.motorsport.com/rss/dtm/news/"
 };
 
 const feedCache = {};
@@ -197,6 +230,10 @@ const fallbackNews = {
     ],
     gtwc: [
         { title: "Team WRT leads GT World Challenge testing", summary: "BMW M4 GT3 and Ferrari 296 GT3 squads pace testing sessions across sprint and endurance cups.", source: "Motorsport.com", url: "https://www.motorsport.com/gt/news/", date: new Date().toLocaleDateString() }
+    ],
+    dtm: [
+        { title: "Kelvin van der Linde and Abt Sportsline top Red Bull Ring DTM round", summary: "Abt Lamborghini Huracan GT3 showcases dominant race performance to strengthen DTM title bid.", source: "Motorsport.com", url: "https://www.motorsport.com/dtm/news/", date: new Date().toLocaleDateString() },
+        { title: "Rene Rast and Schubert BMW qualify on front row", summary: "Three-time champion Rene Rast sets blistering sectors to battle for DTM victory.", source: "Motorsport.com", url: "https://www.motorsport.com/dtm/news/", date: new Date().toLocaleDateString() }
     ]
 };
 
@@ -271,7 +308,8 @@ app.get("/api/news/:series", async (req, res) => {
     const seriesKey = rawSeries.includes("moto") ? "motogp" :
                       rawSeries.includes("wec") ? "wec" :
                       rawSeries.includes("imsa") ? "imsa" :
-                      rawSeries.includes("gt") ? "gtwc" : "f1";
+                      rawSeries.includes("gt") ? "gtwc" :
+                      rawSeries.includes("dtm") ? "dtm" : "f1";
 
     const customArticles = (adminConfig.siteContent.customNews || [])
         .filter(item => !item.series || item.series.toLowerCase().includes(seriesKey) || item.series === "All" || rawSeries.includes((item.series || "").toLowerCase()))
@@ -579,6 +617,35 @@ app.post("/api/admin/content", requireAdminAuth, (req, res) => {
         success: true,
         siteContent: adminConfig.siteContent,
         message: "تم حفظ وتحديث محتوى الموقع بنجاح / Site content updated successfully"
+    });
+});
+
+// ==================== MEDIA ENDPOINTS ====================
+// Public Media Config
+app.get("/api/media", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.json(mediaConfig);
+});
+
+// Admin Update Media Config
+app.post("/api/admin/media", requireAdminAuth, (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const payload = req.body || {};
+    mediaConfig = {
+        ...mediaConfig,
+        ...payload,
+        championshipLogos: { ...(mediaConfig.championshipLogos || {}), ...(payload.championshipLogos || {}) },
+        championshipImages: { ...(mediaConfig.championshipImages || {}), ...(payload.championshipImages || {}) },
+        teamLogos: { ...(mediaConfig.teamLogos || {}), ...(payload.teamLogos || {}) },
+        teamImages: { ...(mediaConfig.teamImages || {}), ...(payload.teamImages || {}) },
+        driverImages: { ...(mediaConfig.driverImages || {}), ...(payload.driverImages || {}) },
+        heroBgImage: payload.heroBgImage || mediaConfig.heroBgImage
+    };
+    saveMediaConfigFile();
+    res.json({ 
+        success: true, 
+        message: "تم حفظ وتطبيق وسائط وشعارات المنصة بنجاح / Media updated successfully",
+        mediaConfig 
     });
 });
 
