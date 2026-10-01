@@ -201,3 +201,31 @@ export const adminLogout = async (): Promise<void> => {
     } catch {}
     clearStoredAdminToken();
 };
+
+export const fetchAdminUsers = async (): Promise<{ count: number; users: any[] }> => {
+    try {
+        const res = await fetch('/api/admin/users', {
+            headers: getAuthHeaders()
+        });
+        const data = await safeJsonParse(res);
+        if (data && data.success) {
+            return { count: data.count || 0, users: data.users || [] };
+        }
+        return { count: 0, users: [] };
+    } catch {
+        return { count: 0, users: [] };
+    }
+};
+
+export const syncAllBotsRequest = async (): Promise<{ success: boolean; message: string; results?: any[] }> => {
+    try {
+        const res = await fetch('/api/bots/sync/all', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const data = await safeJsonParse(res);
+        return data;
+    } catch (e: any) {
+        return { success: false, message: e.message || 'Bot sync network error' };
+    }
+};

@@ -182,3 +182,34 @@ export interface SeriesResultsData {
     driverStandings: DriverStandingEntry[];
     teamStandings: TeamStandingEntry[];
 }
+
+export interface UserProfile {
+    id: string;
+    username: string;
+    email: string;
+    avatar?: string;
+    createdAt: string;
+    favoriteTeams: string[];
+    favoriteDrivers: string[];
+    notificationsEnabled: boolean;
+}
+
+export interface HistoricalSeasonStandings {
+    season: number;
+    series: SeriesId;
+    driverStandings: DriverStandingEntry[];
+    teamStandings: TeamStandingEntry[];
+    championDriver: string;
+    championTeam: string;
+    seasonSummary: string;
+}
+
+export interface AdminAnalytics {
+    totalPageViews: number;
+    liveVisitors: number;
+    totalRegisteredUsers: number;
+    seriesViews: Record<string, number>;
+    recentLogins: { username: string; timestamp: string; ip?: string }[];
+    apiCallsCount: number;
+}
+

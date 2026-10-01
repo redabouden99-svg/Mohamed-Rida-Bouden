@@ -1,0 +1,32 @@
+[
+  {
+    "id": "usr_001",
+    "name": "Mohamed Rida",
+    "email": "user@boudenmotorsport.com",
+    "passwordHash": "reda123",
+    "favoriteSeries": "Formula 1",
+    "favoriteTeam": "Ferrari",
+    "favoriteDriver": "Lewis Hamilton",
+    "favoriteTeamsList": ["Ferrari", "Ducati Lenovo Team", "Porsche Penske Motorsport"],
+    "favoriteDriversList": ["Lewis Hamilton", "Marc Marquez", "Charles Leclerc"],
+    "notificationsEnabled": true,
+    "role": "fan",
+    "createdAt": "2026-02-15T10:00:00.000Z",
+    "lastLogin": "2026-10-01T14:30:00.000Z"
+  },
+  {
+    "id": "usr_002",
+    "name": "Alex Vance",
+    "email": "alex@racing.io",
+    "passwordHash": "paddock2026",
+    "favoriteSeries": "WEC",
+    "favoriteTeam": "Porsche Penske Motorsport",
+    "favoriteDriver": "Kevin Estre",
+    "favoriteTeamsList": ["Porsche Penske Motorsport", "McLaren"],
+    "favoriteDriversList": ["Kevin Estre", "Lando Norris"],
+    "notificationsEnabled": true,
+    "role": "fan",
+    "createdAt": "2026-03-01T12:00:00.000Z",
+    "lastLogin": "2026-09-28T09:15:00.000Z"
+  }
+]

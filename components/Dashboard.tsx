@@ -12,14 +12,15 @@ import {
 } from 'lucide-react';
 import TeamDetailModal from './TeamDetailModal';
 import BotResultsView from './BotResultsView';
+import HistoricalStandingsView from './HistoricalStandingsView';
 
 interface DashboardProps {
     series: SeriesId;
-    initialTab?: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings';
+    initialTab?: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings' | 'archive';
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' }) => {
-    const [activeTab, setActiveTab] = useState<'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings' | 'archive'>(initialTab);
     const [loading, setLoading] = useState(false);
     
     // Automated Championship Bot State
@@ -128,8 +129,8 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [series, activeTab]);
 
-    const fetchData = async (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings', force = false) => {
-        if (tab === 'results' || tab === 'teams' || tab === 'standings') return; // Results and teams managed separately 
+    const fetchData = async (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings' | 'archive', force = false) => {
+        if (tab === 'results' || tab === 'teams' || tab === 'standings' || tab === 'archive') return; // Results, teams, and archives managed separately 
 
         setLoading(true);
         try {
@@ -150,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
         }
     };
 
-    const handleTabChange = (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings') => {
+    const handleTabChange = (tab: 'results' | 'news' | 'analysis' | 'prediction' | 'teams' | 'standings' | 'archive') => {
         setActiveTab(tab);
     };
 
@@ -247,6 +248,12 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-300 font-bold text-sm ${activeTab === 'prediction' ? `bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] ${getSeriesColor()}` : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
                         >
                             <Brain size={16} /> Predict
+                        </button>
+                        <button 
+                            onClick={() => handleTabChange('archive')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-300 font-bold text-sm ${activeTab === 'archive' ? 'bg-amber-500/20 text-yellow-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                        >
+                            <Trophy size={16} className="text-yellow-400" /> Archive (2024-2025)
                         </button>
                     </div>
                 </div>
@@ -345,7 +352,23 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                             )}
 
                             {activeTab === 'standings' && (
-                                <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                                <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 space-y-4">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-dark-800/80 p-4 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2.5 py-1 rounded-full bg-brand-brightGreen/20 text-brand-brightGreen text-xs font-bold font-mono">
+                                                ● 2026 Season Official
+                                            </span>
+                                            <span className="text-xs text-gray-400">ترتيب الفرق والصانعين الحالي لموسم 2026</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleTabChange('archive')}
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-400 border border-amber-500/30 text-xs font-bold transition-all shadow-sm"
+                                        >
+                                            <Trophy className="w-3.5 h-3.5" />
+                                            <span>أرشيف المواسم السابقة (2024 - 2025) →</span>
+                                        </button>
+                                    </div>
+
                                     <div className="bg-dark-800 rounded-2xl border border-white/5 overflow-hidden">
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left">
@@ -407,6 +430,16 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                                             </table>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'archive' && (
+                                <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                                    <HistoricalStandingsView 
+                                        seriesName={series} 
+                                        seriesColor={getSeriesColor()} 
+                                        seriesBg={getSeriesBg()} 
+                                    />
                                 </div>
                             )}
 

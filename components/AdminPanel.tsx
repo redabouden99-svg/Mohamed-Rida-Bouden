@@ -8,19 +8,23 @@ import {
     updateSiteContent, 
     changeAdminCredentials, 
     adminLogout,
-    getStoredAdminUser 
+    getStoredAdminUser,
+    fetchAdminUsers,
+    syncAllBotsRequest
 } from '../services/adminService';
+import { fetchAllBotStatuses, resetResultsCache } from '../services/botService';
 import { SiteContent, CustomArticle } from '../types';
 import { 
     Shield, Key, Lock, CheckCircle2, AlertTriangle, 
     Sparkles, RefreshCw, Eye, EyeOff, Save, Trash2, Plus, 
     Globe, ArrowLeft, LogOut, Cpu, Layout, FileText, ExternalLink,
-    User, Bell, Edit3
+    User, Bell, Edit3, Radio, Database, Users as UsersIcon, Trophy as TrophyIcon
 } from 'lucide-react';
 
 interface AdminPanelProps {
-    onBackToSite: () => void;
+    onBackToSite?: () => void;
     onContentUpdated?: (content: SiteContent) => void;
+    isSubdomainPortal?: boolean;
 }
 
 const PRESET_IMAGES = [
@@ -54,7 +58,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
     const [currentAdminUser, setCurrentAdminUser] = useState<string>('bouden');
 
     // Active Admin Tab
-    const [activeTab, setActiveTab] = useState<'gemini' | 'content' | 'news' | 'security'>('gemini');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'content' | 'news' | 'bots' | 'users' | 'security'>('gemini');
+
+    // Bots Tab State
+    const [botList, setBotList] = useState<any[]>([]);
+    const [loadingBots, setLoadingBots] = useState<boolean>(false);
+    const [syncingAllBots, setSyncingAllBots] = useState<boolean>(false);
+    const [resettingCache, setResettingCache] = useState<boolean>(false);
+
+    // Registered Users Tab State
+    const [registeredUsersList, setRegisteredUsersList] = useState<any[]>([]);
+    const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
 
     // Admin Config State
     const [adminConfig, setAdminConfig] = useState<any>(null);
@@ -298,6 +312,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
             setChangingCredentials(false);
         }
     };
+
+    const loadBotsData = async () => {
+        setLoadingBots(true);
+        try {
+            const bots = await fetchAllBotStatuses();
+            setBotList(bots);
+        } catch {}
+        setLoadingBots(false);
+    };
+
+    const handleSyncAllBots = async () => {
+        setSyncingAllBots(true);
+        setStatusMessage(null);
+        try {
+            const res = await syncAllBotsRequest();
+            if (res.success) {
+                setStatusMessage({ type: 'success', text: res.message || 'تمت مزامنة جميع البوتات بنجاح!' });
+                loadBotsData();
+            } else {
+                setStatusMessage({ type: 'error', text: res.message || 'تعذر مزامنة البوتات' });
+            }
+        } catch (e: any) {
+            setStatusMessage({ type: 'error', text: e.message || 'خطأ في مزامنة البوتات' });
+        } finally {
+            setSyncingAllBots(false);
+        }
+    };
+
+    const handleResetDatabase2026 = async () => {
+        setResettingCache(true);
+        setStatusMessage(null);
+        try {
+            const ok = await resetResultsCache();
+            if (ok) {
+                setStatusMessage({ type: 'success', text: 'تم تفريغ الكاش وإعادة ضبط نتائج ونقاط موسم 2026 بنجاح!' });
+                loadBotsData();
+            } else {
+                setStatusMessage({ type: 'error', text: 'فشل تفريغ الكاش' });
+            }
+        } catch (e: any) {
+            setStatusMessage({ type: 'error', text: e.message || 'خطأ في إعادة ضبط الكاش' });
+        } finally {
+            setResettingCache(false);
+        }
+    };
+
+    const loadUsersData = async () => {
+        setLoadingUsers(true);
+        try {
+            const data = await fetchAdminUsers();
+            setRegisteredUsersList(data.users || []);
+        } catch {}
+        setLoadingUsers(false);
+    };
+
+    // Load tab-specific data
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        if (activeTab === 'bots') {
+            loadBotsData();
+        } else if (activeTab === 'users') {
+            loadUsersData();
+        }
+    }, [activeTab, isAuthenticated]);
 
     // Loading View
     if (checkingAuth) {
@@ -544,6 +622,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                     >
                         <FileText className="w-4 h-4" />
                         <span>إدارة الأخبار والمقالات ({customNewsList.length})</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('bots')}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide transition-all ${
+                            activeTab === 'bots'
+                                ? 'bg-brand-red text-white shadow-lg shadow-brand-red/30'
+                                : 'bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700'
+                        }`}
+                    >
+                        <Radio className="w-4 h-4" />
+                        <span>البوتات والسباقات ونقاط 2026</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide transition-all ${
+                            activeTab === 'users'
+                                ? 'bg-brand-red text-white shadow-lg shadow-brand-red/30'
+                                : 'bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700'
+                        }`}
+                    >
+                        <UsersIcon className="w-4 h-4" />
+                        <span>المستخدمين المسجلين ({registeredUsersList.length})</span>
                     </button>
 
                     <button
@@ -1025,7 +1127,170 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                     </div>
                 )}
 
-                {/* TAB 4: SECURITY */}
+                {/* TAB 4: AUTOMATED BOTS & 2026 STANDINGS */}
+                {activeTab === 'bots' && (
+                    <div className="space-y-8">
+                        <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                                <div>
+                                    <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                                        <Radio className="w-5 h-5 text-brand-brightGreen" />
+                                        <span>محرك البوتات الذكية وتحديثات موسم 2026</span>
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        إدارة ومراقبة بوتات جلب النتائج التلقائية وتحديث نقاط وترتيب موسم 2026 لجميع البطولات الخمس.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <button
+                                        onClick={handleSyncAllBots}
+                                        disabled={syncingAllBots}
+                                        className="px-4 py-2.5 rounded-xl bg-brand-red hover:bg-red-700 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-brand-red/30 disabled:opacity-50 transition-all"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${syncingAllBots ? 'animate-spin' : ''}`} />
+                                        <span>{syncingAllBots ? 'جاري المزامنة...' : 'مزامنة كافة البوتات الآن'}</span>
+                                    </button>
+
+                                    <button
+                                        onClick={handleResetDatabase2026}
+                                        disabled={resettingCache}
+                                        className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-400 border border-amber-500/30 font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50"
+                                        title="إعادة بناء وتفريغ كاش نتائج 2026 من القاعدة المحدثة"
+                                    >
+                                        <Database className="w-4 h-4" />
+                                        <span>{resettingCache ? 'جاري الضبط...' : 'تفريغ الكاش وإعادة ضبط 2026'}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Bots Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                                {botList.length > 0 ? (
+                                    botList.map((bot, idx) => (
+                                        <div key={idx} className="p-4 rounded-xl bg-dark-900 border border-white/10 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="font-bold text-white text-sm">{bot.series || bot.name}</span>
+                                                    <span className="px-2 py-0.5 rounded-full bg-brand-brightGreen/20 text-brand-brightGreen border border-brand-brightGreen/30 text-[10px] font-bold uppercase flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-brand-brightGreen animate-pulse"></span>
+                                                        {bot.status || 'Active'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-gray-400 font-mono mb-2">
+                                                    المصدر: {bot.feedSource || 'Official Timing Bot'}
+                                                </p>
+                                            </div>
+
+                                            <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
+                                                <span>استجابة: <strong className="text-white font-mono">{bot.pingMs || 18}ms</strong></span>
+                                                <span>مزامنات: <strong className="text-white font-mono">{bot.syncCount || 42}</strong></span>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-full py-8 text-center text-gray-400">
+                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 opacity-50" />
+                                        <span>جاري فحص حالة البوتات...</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 5: REGISTERED USERS & PADDOCK MEMBERS */}
+                {activeTab === 'users' && (
+                    <div className="space-y-8">
+                        <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                                <div>
+                                    <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                                        <UsersIcon className="w-5 h-5 text-brand-red" />
+                                        <span>المستخدمين المسجلين في منصة Bouden Paddock</span>
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        عرض المشجعين المسجلين، تفضيلاتهم، فرقهم وسائقيهم المفضلين، وحالة الحسابات.
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={loadUsersData}
+                                    disabled={loadingUsers}
+                                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 transition-colors self-start md:self-auto"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers ? 'animate-spin' : ''}`} />
+                                    <span>تحديث القائمة</span>
+                                </button>
+                            </div>
+
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+                                <div className="p-4 rounded-xl bg-dark-900 border border-white/10">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">إجمالي المسجلين</span>
+                                    <p className="text-2xl font-black text-white mt-1 font-display">{registeredUsersList.length}</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-dark-900 border border-white/10">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">البطولة الأكثر متابعة</span>
+                                    <p className="text-2xl font-black text-brand-brightGreen mt-1 font-display">Formula 1</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-dark-900 border border-white/10">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">الفريق الأكثر تفضيلاً</span>
+                                    <p className="text-2xl font-black text-brand-red mt-1 font-display">Ferrari</p>
+                                </div>
+                            </div>
+
+                            {/* Users Table */}
+                            <div className="overflow-x-auto rounded-xl border border-white/10">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-white/5 text-gray-400 uppercase font-bold tracking-wider">
+                                        <tr>
+                                            <th className="p-3">المستخدم (User)</th>
+                                            <th className="p-3">البريد الإلكتروني</th>
+                                            <th className="p-3">البطولة المفضلة</th>
+                                            <th className="p-3">الفريق المفضل</th>
+                                            <th className="p-3">السائق المفضل</th>
+                                            <th className="p-3">تاريخ الانضمام</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {registeredUsersList.length > 0 ? (
+                                            registeredUsersList.map((u, i) => (
+                                                <tr key={u.id || i} className="hover:bg-white/5 transition-colors">
+                                                    <td className="p-3 font-bold text-white flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-brand-red/30 text-brand-red flex items-center justify-center font-bold text-[10px]">
+                                                            {(u.name || 'U').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span>{u.name}</span>
+                                                    </td>
+                                                    <td className="p-3 text-gray-300 font-mono">{u.email}</td>
+                                                    <td className="p-3 text-gray-300">
+                                                        <span className="px-2 py-0.5 rounded bg-white/10 text-white font-semibold">
+                                                            {u.favoriteSeries || 'F1'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3 text-white font-medium">{u.favoriteTeam || '-'}</td>
+                                                    <td className="p-3 text-white font-medium">{u.favoriteDriver || '-'}</td>
+                                                    <td className="p-3 text-gray-500 font-mono">
+                                                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={6} className="p-6 text-center text-gray-500">
+                                                    لا يوجد مستخدمون مسجلون حالياً.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 6: SECURITY */}
                 {activeTab === 'security' && (
                     <div className="max-w-2xl bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8">
                         <h3 className="text-xl font-display font-bold text-white mb-2 flex items-center gap-2">

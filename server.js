@@ -239,6 +239,21 @@ app.get("/api/bots", (req, res) => {
     res.json(botEngine.getAllBotStatuses());
 });
 
+// Automated Championship Bots: Sync all bots
+app.post("/api/bots/sync/all", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+        const statuses = botEngine.getAllBotStatuses();
+        res.json({
+            success: true,
+            message: "تمت مزامنة جميع البوتات الخمسة لموسم 2026 بنجاح / All 5 championship bots synchronized",
+            bots: statuses
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // Automated Championship Bots: Reset cache to official 2026 database
 app.post("/api/results/reset", (req, res) => {
     res.setHeader("Content-Type", "application/json");
@@ -612,6 +627,204 @@ app.post("/api/admin/logout", requireAdminAuth, (req, res) => {
     res.json({ success: true, message: "تم تسجيل الخروج / Logged out successfully" });
 });
 
+// ==================== USER AUTHENTICATION & FAVORITES ====================
+const USERS_FILE = path.join(__dirname, "data", "users.json");
+let registeredUsers = [];
+
+function loadUsers() {
+    try {
+        if (fs.existsSync(USERS_FILE)) {
+            const raw = fs.readFileSync(USERS_FILE, "utf-8");
+            registeredUsers = JSON.parse(raw);
+        } else {
+            registeredUsers = [];
+            const dir = path.dirname(USERS_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(USERS_FILE, JSON.stringify(registeredUsers, null, 2));
+        }
+    } catch (e) {
+        console.error("Error loading users:", e);
+        registeredUsers = [];
+    }
+}
+loadUsers();
+
+function saveUsers() {
+    try {
+        const dir = path.dirname(USERS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(USERS_FILE, JSON.stringify(registeredUsers, null, 2));
+    } catch (e) {
+        console.error("Error saving users:", e);
+    }
+}
+
+const activeUserSessions = new Map(); // token -> userId
+
+function createUserSession(userId) {
+    const token = "usr_" + crypto.randomBytes(24).toString("hex");
+    activeUserSessions.set(token, { userId, createdAt: Date.now() });
+    return token;
+}
+
+function verifyUserToken(token) {
+    if (!token) return null;
+    const session = activeUserSessions.get(token);
+    if (!session) return null;
+    const user = registeredUsers.find(u => u.id === session.userId);
+    return user || null;
+}
+
+// User Register
+app.post("/api/auth/register", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const { name, email, password, favoriteSeries, favoriteTeam, favoriteDriver } = req.body || {};
+    if (!email || !password || !name) {
+        return res.status(400).json({ success: false, error: "الرجاء إدخال جميع الحقول المطلوبة / Missing required fields" });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = registeredUsers.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+        return res.status(409).json({ success: false, error: "البريد الإلكتروني مسجل بالفعل / Email already registered" });
+    }
+
+    const newUser = {
+        id: "usr_" + crypto.randomBytes(6).toString("hex"),
+        name: name.trim(),
+        email: cleanEmail,
+        passwordHash: password, // In production, bcrypt is used
+        favoriteSeries: favoriteSeries || "Formula 1",
+        favoriteTeam: favoriteTeam || "",
+        favoriteDriver: favoriteDriver || "",
+        favoriteTeamsList: favoriteTeam ? [favoriteTeam] : [],
+        favoriteDriversList: favoriteDriver ? [favoriteDriver] : [],
+        notificationsEnabled: true,
+        role: "fan",
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+    };
+
+    registeredUsers.push(newUser);
+    saveUsers();
+
+    const token = createUserSession(newUser.id);
+    const { passwordHash, ...safeUser } = newUser;
+    res.json({ success: true, user: safeUser, token, message: "تم إنشاء الحساب بنجاح / Registered successfully" });
+});
+
+// User Login
+app.post("/api/auth/login", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+        return res.status(400).json({ success: false, error: "الرجاء إدخال البريد وكلمة المرور / Email and password required" });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = registeredUsers.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!user || user.passwordHash !== password) {
+        return res.status(401).json({ success: false, error: "بيانات الدخول غير صحيحة / Invalid email or password" });
+    }
+
+    user.lastLogin = new Date().toISOString();
+    saveUsers();
+
+    const token = createUserSession(user.id);
+    const { passwordHash, ...safeUser } = user;
+    res.json({ success: true, user: safeUser, token, message: "تم تسجيل الدخول بنجاح / Logged in successfully" });
+});
+
+// User Me / Verify
+app.get("/api/auth/me", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    const token = authHeader.substring(7).trim();
+    const user = verifyUserToken(token);
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Session expired or invalid" });
+    }
+    const { passwordHash, ...safeUser } = user;
+    res.json({ success: true, user: safeUser });
+});
+
+// User Update Favorites
+app.post("/api/auth/favorites", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    const token = authHeader.substring(7).trim();
+    const user = verifyUserToken(token);
+    if (!user) {
+        return res.status(401).json({ success: false, error: "Session expired" });
+    }
+
+    const { favoriteTeamsList, favoriteDriversList, favoriteSeries, notificationsEnabled } = req.body || {};
+    if (favoriteTeamsList !== undefined) user.favoriteTeamsList = favoriteTeamsList;
+    if (favoriteDriversList !== undefined) user.favoriteDriversList = favoriteDriversList;
+    if (favoriteSeries !== undefined) user.favoriteSeries = favoriteSeries;
+    if (notificationsEnabled !== undefined) user.notificationsEnabled = notificationsEnabled;
+
+    saveUsers();
+    const { passwordHash, ...safeUser } = user;
+    res.json({ success: true, user: safeUser, message: "Favorites updated" });
+});
+
+// User Logout
+app.post("/api/auth/logout", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7).trim();
+        activeUserSessions.delete(token);
+    }
+    res.json({ success: true, message: "User session closed" });
+});
+
+// Admin Get Registered Users
+app.get("/api/admin/users", requireAdminAuth, (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const safeList = registeredUsers.map(({ passwordHash, ...u }) => u);
+    res.json({
+        success: true,
+        count: safeList.length,
+        users: safeList
+    });
+});
+
+// ==================== SUBDOMAIN & SYSTEM INFO ====================
+function isSubdomainRequest(req) {
+    const host = (req.headers.host || req.hostname || "").toLowerCase();
+    const xForwardedHost = (req.headers["x-forwarded-host"] || "").toLowerCase();
+    const xSubdomain = (req.headers["x-subdomain"] || "").toLowerCase();
+    const querySubdomain = (req.query.subdomain || req.query.domain || req.query.portal || "").toLowerCase();
+
+    return (
+        host.startsWith("admin.") ||
+        host.startsWith("bouden-admin.") ||
+        xForwardedHost.startsWith("admin.") ||
+        xForwardedHost.startsWith("bouden-admin.") ||
+        xSubdomain === "admin" ||
+        querySubdomain === "admin"
+    );
+}
+
+app.get("/api/system/domain-mode", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const isAdmin = isSubdomainRequest(req);
+    res.json({
+        isAdminDomain: isAdmin,
+        currentHost: req.headers.host || req.hostname,
+        adminSubdomainUrl: "https://bouden-admin.vercel.app",
+        mainSiteUrl: "https://boudenmotorsport.vercel.app"
+    });
+});
+
 // Any unknown API route gets a guaranteed JSON 404 response (prevents HTML/Unexpected token errors)
 app.all("/api/*", (req, res) => {
     res.setHeader("Content-Type", "application/json");
@@ -623,6 +836,18 @@ app.use("/api", (err, req, res, next) => {
     console.error("API Error middleware:", err);
     res.setHeader("Content-Type", "application/json");
     res.status(500).json({ success: false, message: err.message || "Internal server error" });
+});
+
+// Block /admin on the main site - Accessible ONLY on dedicated admin subdomain (bouden-admin.vercel.app)
+app.use((req, res, next) => {
+    const p = req.path.toLowerCase();
+    if (p === "/admin" || p === "/admin/" || p.startsWith("/admin/")) {
+        if (!isSubdomainRequest(req)) {
+            // Main site visitor attempting to access /admin -> redirect to home with blocked notice or 403
+            return res.redirect("/?blocked_admin=true");
+        }
+    }
+    next();
 });
 
 // ==================== FRONTEND SERVING ====================

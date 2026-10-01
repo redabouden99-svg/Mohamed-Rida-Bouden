@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Menu, X, ChevronDown, Bell, LogIn, Shield, Activity } from 'lucide-react';
+import { Menu, X, ChevronDown, Bell, LogIn, User, Heart } from 'lucide-react';
 import { SeriesId } from '../types';
+import { UserAccount } from '../services/authService';
 
 interface NavbarProps {
-    onNavigate: (view: 'home' | 'dashboard' | 'admin') => void;
+    onNavigate: (view: 'home' | 'dashboard') => void;
     onSelectSeries: (series: SeriesId) => void;
     currentSeries: SeriesId | null;
     announcement?: {
@@ -12,9 +13,20 @@ interface NavbarProps {
         type: 'info' | 'breaking' | 'warning' | 'success';
         link?: string;
     } | null;
+    user?: UserAccount | null;
+    onOpenAuth?: () => void;
+    onOpenProfile?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, onSelectSeries, currentSeries, announcement }) => {
+const Navbar: React.FC<NavbarProps> = ({ 
+    onNavigate, 
+    onSelectSeries, 
+    currentSeries, 
+    announcement,
+    user,
+    onOpenAuth,
+    onOpenProfile
+}) => {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -122,27 +134,52 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onSelectSeries, currentSeri
                                 Predictions
                             </button>
 
-                            {/* Small Dedicated Login Button for /admin */}
-                            <button
-                                onClick={() => onNavigate('admin')}
-                                className="group relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-red/15 hover:bg-brand-red text-white border border-brand-red/40 hover:border-brand-red text-xs font-bold tracking-wide transition-all duration-200 shadow-sm hover:shadow-[0_0_16px_rgba(255,51,51,0.5)] hover:scale-105 active:scale-95"
-                                title="تسجيل الدخول إلى لوحة تحكم الأدمن (/admin)"
-                            >
-                                <LogIn className="w-3.5 h-3.5 text-brand-red group-hover:text-white transition-colors" />
-                                <span>تسجيل الدخول</span>
-                            </button>
+                            {/* User Authentication & Profile Button */}
+                            {user ? (
+                                <button
+                                    onClick={onOpenProfile}
+                                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold tracking-wide transition-all shadow-sm hover:scale-105"
+                                    title="إدارة الملف الشخصي والفرق المفضلة"
+                                >
+                                    <div className="w-5 h-5 rounded-full bg-brand-red text-white flex items-center justify-center text-[10px]">
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span>{user.name.split(' ')[0]}</span>
+                                    {user.favoriteTeam && (
+                                        <Heart className="w-3 h-3 text-brand-red fill-brand-red" />
+                                    )}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={onOpenAuth}
+                                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-brand-red text-white border border-white/20 hover:border-brand-red text-xs font-bold tracking-wide transition-all duration-200 shadow-sm hover:shadow-[0_0_16px_rgba(255,51,51,0.5)] hover:scale-105 active:scale-95"
+                                    title="تسجيل الدخول / إنشاء حساب جديد"
+                                >
+                                    <LogIn className="w-3.5 h-3.5 text-brand-brightGreen hover:text-white transition-colors" />
+                                    <span>تسجيل الدخول</span>
+                                </button>
+                            )}
                         </div>
 
                         {/* Mobile menu button */}
                         <div className="-mr-2 flex md:hidden items-center gap-2">
-                            {/* Mobile Quick Login Icon */}
-                            <button
-                                onClick={() => onNavigate('admin')}
-                                className="p-2 rounded-lg bg-brand-red/15 border border-brand-red/40 text-brand-red hover:bg-brand-red hover:text-white transition-colors"
-                                title="تسجيل الدخول"
-                            >
-                                <LogIn className="w-4 h-4" />
-                            </button>
+                            {user ? (
+                                <button
+                                    onClick={onOpenProfile}
+                                    className="p-2 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-bold flex items-center gap-1"
+                                >
+                                    <User className="w-4 h-4 text-brand-brightGreen" />
+                                    <span>{user.name.split(' ')[0]}</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={onOpenAuth}
+                                    className="p-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-brand-red transition-colors"
+                                    title="تسجيل الدخول"
+                                >
+                                    <LogIn className="w-4 h-4" />
+                                </button>
+                            )}
 
                             <button
                                 onClick={() => setIsOpen(!isOpen)}
@@ -190,15 +227,25 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onSelectSeries, currentSeri
                                 Predictions
                             </button>
 
-                            {/* Mobile Login Button */}
+                            {/* Mobile User Auth Button */}
                             <div className="pt-2 mt-2 border-t border-white/10">
-                                <button 
-                                    onClick={() => { onNavigate('admin'); setIsOpen(false); }} 
-                                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand-red text-white text-sm font-bold shadow-lg shadow-brand-red/30"
-                                >
-                                    <LogIn className="w-4 h-4" />
-                                    <span>تسجيل الدخول (لوحة تحكم الأدمن)</span>
-                                </button>
+                                {user ? (
+                                    <button 
+                                        onClick={() => { onOpenProfile?.(); setIsOpen(false); }} 
+                                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/10 text-white text-sm font-bold border border-white/20"
+                                    >
+                                        <User className="w-4 h-4 text-brand-brightGreen" />
+                                        <span>ملفي الشخصي ({user.name})</span>
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => { onOpenAuth?.(); setIsOpen(false); }} 
+                                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand-red text-white text-sm font-bold shadow-lg shadow-brand-red/30"
+                                    >
+                                        <LogIn className="w-4 h-4" />
+                                        <span>تسجيل الدخول / إنشاء حساب</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

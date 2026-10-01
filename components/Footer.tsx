@@ -1,20 +1,6 @@
 import React from 'react';
-import { Shield, Lock } from 'lucide-react';
 
-interface FooterProps {
-    onNavigateToAdmin?: () => void;
-}
-
-const Footer: React.FC<FooterProps> = ({ onNavigateToAdmin }) => {
-    const handleAdminClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (onNavigateToAdmin) {
-            onNavigateToAdmin();
-        } else {
-            window.location.href = '/admin';
-        }
-    };
-
+const Footer: React.FC = () => {
     return (
         <footer className="bg-dark-900 border-t border-white/10 py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -26,17 +12,9 @@ const Footer: React.FC<FooterProps> = ({ onNavigateToAdmin }) => {
                     <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
                     <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
                     <a href="/api/health" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">API Status</a>
-                    
-                    {/* Explicit Admin Panel Link */}
-                    <a 
-                        href="/admin" 
-                        onClick={handleAdminClick}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-brand-red hover:text-white text-gray-300 border border-white/10 transition-all font-semibold text-xs tracking-wide shadow-sm"
-                        title="لوحة تحكم الأدمن وضبط Gemini API"
-                    >
-                        <Shield className="w-3.5 h-3.5 text-brand-brightGreen" />
-                        <span>لوحة تحكم الأدمن (Admin Panel)</span>
-                    </a>
+                    <a href="#series-selector" className="hover:text-white transition-colors">Championships</a>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-400 text-xs">Season 2026 Live Telemetry</span>
                 </div>
 
                 <p className="text-gray-600 text-xs sm:text-sm">

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "vite build",
+    "lint": "tsc --noEmit",
     "start": "node server.js",
     "preview": "vite preview"
   },
