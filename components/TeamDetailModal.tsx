@@ -4,6 +4,7 @@ import {
     X, Trophy, MapPin, Flag, Cpu, Shield, Globe, Award, 
     Calendar, Users, ChevronRight, Activity, Zap
 } from 'lucide-react';
+import { resolveTeamImage, resolveTeamLogo, resolveDriverImage } from '../services/mediaService';
 
 interface TeamDetailModalProps {
     team: Team | null;
@@ -46,7 +47,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ team, onClose,
                 {/* Hero Car Banner */}
                 <div className="relative h-60 sm:h-72 w-full overflow-hidden bg-dark-800">
                     <img 
-                        src={team.image} 
+                        src={resolveTeamImage(team.id, team.image)} 
                         alt={team.name} 
                         className="w-full h-full object-cover object-center transform hover:scale-105 transition-transform duration-1000"
                     />
@@ -56,7 +57,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ team, onClose,
                     {/* Team Logo Badge */}
                     {team.logo && (
                         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 bg-white/95 p-2.5 rounded-2xl shadow-xl backdrop-blur-md h-14 sm:h-16 max-w-[120px] flex items-center justify-center border border-white/20">
-                            <img src={team.logo} alt={`${team.name} logo`} className="max-h-full max-w-full object-contain" />
+                            <img src={resolveTeamLogo(team.id, team.logo)} alt={`${team.name} logo`} className="max-h-full max-w-full object-contain" />
                         </div>
                     )}
 
@@ -245,7 +246,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({ team, onClose,
                                     <div className="relative w-full md:w-36 h-48 md:h-44 rounded-2xl overflow-hidden bg-dark-900 border border-white/10 shrink-0">
                                         {activeDriver.image ? (
                                             <img 
-                                                src={activeDriver.image} 
+                                                src={resolveDriverImage(activeDriver.name, activeDriver.image)} 
                                                 alt={activeDriver.name} 
                                                 className="w-full h-full object-cover object-top" 
                                             />

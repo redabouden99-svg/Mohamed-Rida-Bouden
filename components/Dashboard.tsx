@@ -4,6 +4,7 @@ import { getLatestNews } from '../services/newsService';
 import { getRacePrediction, getTechnicalAnalysis } from '../services/geminiService';
 import { getTeamsForSeries } from '../services/teamData';
 import { fetchSeriesResults, syncSeriesBot } from '../services/botService';
+import { resolveTeamImage, resolveTeamLogo, subscribeMediaChanges } from '../services/mediaService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { 
     Newspaper, Brain, Activity, Loader2, ExternalLink, MapPin, 
@@ -56,6 +57,15 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
     useEffect(() => {
         if (initialTab) setActiveTab(initialTab);
     }, [initialTab]);
+
+    // Listen to live media updates from Admin Media Manager
+    const [, setMediaVer] = useState(0);
+    useEffect(() => {
+        const unsubscribe = subscribeMediaChanges(() => {
+            setMediaVer(v => v + 1);
+        });
+        return unsubscribe;
+    }, []);
 
     // Initial Telemetry Population and Team Loading
     useEffect(() => {
@@ -445,13 +455,13 @@ const Dashboard: React.FC<DashboardProps> = ({ series, initialTab = 'results' })
                                                          className="relative h-56 overflow-hidden cursor-pointer"
                                                          title="Click to view full team details and 2026 technical specifications"
                                                      >
-                                                        <img src={team.image} alt={team.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 hover:opacity-100" />
+                                                        <img src={resolveTeamImage(team.id, team.image)} alt={team.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 hover:opacity-100" />
                                                         <div className="absolute inset-0 bg-gradient-to-t from-dark-800 via-dark-800/40 to-transparent"></div>
                                                         
                                                         {/* Team Logo Overlay */}
                                                         {team.logo && (
                                                             <div className="absolute top-4 right-4 bg-white/90 p-2 rounded-lg shadow-lg backdrop-blur-sm max-w-[80px] h-[50px] flex items-center justify-center">
-                                                                <img src={team.logo} alt={`${team.name} Logo`} className="max-w-full max-h-full object-contain" />
+                                                                <img src={resolveTeamLogo(team.id, team.logo)} alt={`${team.name} Logo`} className="max-w-full max-h-full object-contain" />
                                                             </div>
                                                         )}
                                                         

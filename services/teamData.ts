@@ -820,6 +820,32 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
         case SeriesId.WEC:
             return [
                 {
+                    id: 'toyota_gazoo_wec',
+                    name: 'Toyota Gazoo',
+                    fullName: 'Toyota Gazoo Racing',
+                    principal: 'Kamui Kobayashi / David Floury',
+                    base: 'Cologne, North Rhine-Westphalia, Germany',
+                    car: 'GR010 Hybrid',
+                    category: 'Hypercar',
+                    engine: 'Toyota 3.5L Twin-Turbo V6 Hybrid (Aisin AWD)',
+                    chassis: 'Toyota TMG LMH Carbon Composite',
+                    technicalDirector: 'John Litjens',
+                    sponsors: ['Denso', 'Mobil 1', 'Zent', 'Michelin', 'Panasonic'],
+                    firstEntry: '2012',
+                    worldChampionships: 5,
+                    points: 154,
+                    rank: 1,
+                    logoColor: '#eb001e',
+                    logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Toyota_Gazoo_Racing_logo_2020.svg',
+                    image: 'https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop',
+                    history: 'Reigning winners of the 2026 6 Hours of Fuji with the GR010 Hybrid (#8 Buemi / Hartley / Hirakawa taking P1 and Fastest Lap). Five-time consecutive 24 Hours of Le Mans champions leading the 2026 World Endurance Championship.',
+                    drivers: [
+                        { name: 'Sébastien Buemi', number: 8, nationality: 'SUI', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 4, wins: 26, podiums: 53 }, bio: 'Four-time Le Mans overall champion, 6 Hours of Fuji 2026 winner, and the all-time winningest driver in WEC history.' },
+                        { name: 'Brendon Hartley', number: 8, nationality: 'NZL', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 4, wins: 22, podiums: 49 }, bio: 'Former F1 driver and endurance savant with titles across Porsche and Toyota programs.' },
+                        { name: 'Ryo Hirakawa', number: 8, nationality: 'JPN', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 9, podiums: 23 }, bio: 'Japanese sensation and Le Mans victor possessing devastating tire-management ability.' }
+                    ]
+                },
+                {
                     id: 'porsche_penske_wec',
                     name: 'Porsche Penske',
                     fullName: 'Porsche Penske Motorsport',
@@ -833,12 +859,12 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     sponsors: ['Penske', 'PUMA', 'Mobil 1', 'Michelin', 'Tag Heuer'],
                     firstEntry: '2023',
                     worldChampionships: 1,
-                    points: 142,
-                    rank: 1,
+                    points: 148,
+                    rank: 2,
                     logoColor: '#d5001c',
                     logo: 'https://upload.wikimedia.org/wikipedia/de/2/2d/Porsche_Wappen.svg',
                     image: 'https://newsroom.porsche.com/.imaging/mte/porsche-templating-theme/image_1290x726/dam/pnr/2023/Motorsports/WEC/Le-Mans-Test-Day/02-Porsche-963-Porsche-Penske-Motorsport.jpg/jcr:content/02-Porsche-963-Porsche-Penske-Motorsport.jpg',
-                    history: 'Porsche is the all-time undisputed king of Le Mans with 19 overall victories. Partnered with legendary Roger Penske, the 963 is the reigning benchmark of endurance balance.',
+                    history: 'Porsche is the all-time undisputed king of Le Mans with 19 overall victories. Partnered with legendary Roger Penske, the 963 is running P2 in 2026 after a close Fuji podium.',
                     drivers: [
                         { name: 'Kévin Estre', number: 6, nationality: 'FRA', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 18, podiums: 45 }, bio: 'WEC World Champion and Nürburgring master. Regarded as one of the fiercest GT and prototype drivers on earth.' },
                         { name: 'Laurens Vanthoor', number: 6, nationality: 'BEL', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 3, wins: 16, podiums: 42 }, bio: 'Belgian factory ace possessing metronomic consistency across grueling multi-stint night runs.' },
@@ -859,42 +885,16 @@ export const getTeamsForSeries = (series: SeriesId): Team[] => {
                     sponsors: ['Richard Mille', 'Ray-Ban', 'Shell', 'Adler Plastic', 'Michelin'],
                     firstEntry: '2023 (Historic Le Mans Winner: 1949-1965, 2023, 2024)',
                     worldChampionships: 2,
-                    points: 128,
-                    rank: 2,
+                    points: 132,
+                    rank: 3,
                     logoColor: '#ff2800',
                     logo: 'https://upload.wikimedia.org/wikipedia/de/c/c0/Scuderia_Ferrari_Logo.svg',
                     image: 'https://images.unsplash.com/photo-1592634976722-13b3c3c78864?q=80&w=1200&auto=format&fit=crop',
-                    history: 'Ferrari returned to top-tier sports car racing after a 50-year absence and immediately captured historic back-to-back victories at the 24 Hours of Le Mans in 2023 and 2024.',
+                    history: 'Ferrari returned to top-tier sports car racing and immediately captured historic back-to-back victories at Le Mans. Holding P3 in the 2026 World Championship.',
                     drivers: [
                         { name: 'Antonio Fuoco', number: 50, nationality: 'ITA', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 4, podiums: 14 }, bio: 'Le Mans 24 Hours winner and undisputed pole position king of the Hypercar class.' },
                         { name: 'Miguel Molina', number: 50, nationality: 'ESP', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop', stats: { titles: 1, wins: 8, podiums: 24 }, bio: 'Spanish veteran who piloted Ferrari to their glorious centenary Le Mans triumph.' },
                         { name: 'Nicklas Nielsen', number: 50, nationality: 'DEN', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 10, podiums: 28 }, bio: 'Danish phenom who famously nursed an open door in the torrential rain to win Le Mans.' }
-                    ]
-                },
-                {
-                    id: 'toyota_gazoo_wec',
-                    name: 'Toyota Gazoo',
-                    fullName: 'Toyota Gazoo Racing',
-                    principal: 'Kamui Kobayashi / David Floury',
-                    base: 'Cologne, North Rhine-Westphalia, Germany',
-                    car: 'GR010 Hybrid',
-                    category: 'Hypercar',
-                    engine: 'Toyota 3.5L Twin-Turbo V6 Hybrid (Aisin AWD)',
-                    chassis: 'Toyota TMG LMH Carbon Composite',
-                    technicalDirector: 'John Litjens',
-                    sponsors: ['Denso', 'Mobil 1', 'Zent', 'Michelin', 'Panasonic'],
-                    firstEntry: '2012',
-                    worldChampionships: 5,
-                    points: 116,
-                    rank: 3,
-                    logoColor: '#eb001e',
-                    logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Toyota_Gazoo_Racing_logo_2020.svg',
-                    image: 'https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop',
-                    history: 'Five-time consecutive 24 Hours of Le Mans champions. Built on unparalleled hybrid reliability, precision pit work, and tactical endurance strategy.',
-                    drivers: [
-                        { name: 'Sébastien Buemi', number: 8, nationality: 'SUI', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop', stats: { titles: 4, wins: 25, podiums: 52 }, bio: 'Four-time Le Mans overall champion and the all-time winningest driver in WEC history.' },
-                        { name: 'Brendon Hartley', number: 8, nationality: 'NZL', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop', stats: { titles: 4, wins: 21, podiums: 48 }, bio: 'Former F1 driver and endurance savant with titles across Porsche and Toyota programs.' },
-                        { name: 'Ryo Hirakawa', number: 8, nationality: 'JPN', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop', stats: { titles: 2, wins: 8, podiums: 22 }, bio: 'Japanese sensation and Le Mans victor possessing devastating tire-management ability.' }
                     ]
                 },
                 {

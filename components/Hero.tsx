@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SiteContent } from '../types';
 import { ChevronRight, Sparkles, Activity } from 'lucide-react';
+import { resolveHeroBg, subscribeMediaChanges } from '../services/mediaService';
 
 interface HeroProps {
     onExplore: () => void;
@@ -12,7 +13,23 @@ const DEFAULT_BG = "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7
 const BACKUP_BG = "https://newsroom.porsche.com/.imaging/mte/porsche-templating-theme/image_1290x726/dam/pnr/2023/Motorsports/WEC/Le-Mans-Test-Day/02-Porsche-963-Porsche-Penske-Motorsport.jpg/jcr:content/02-Porsche-963-Porsche-Penske-Motorsport.jpg";
 
 const Hero: React.FC<HeroProps> = ({ onExplore, siteContent }) => {
-    const bgImage = siteContent?.heroBgImage || DEFAULT_BG;
+    const [bgImage, setBgImage] = useState<string>(() => resolveHeroBg(siteContent?.heroBgImage || DEFAULT_BG));
+
+    useEffect(() => {
+        if (siteContent?.heroBgImage) {
+            setBgImage(resolveHeroBg(siteContent.heroBgImage));
+        }
+    }, [siteContent?.heroBgImage]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeMediaChanges((overrides) => {
+            if (overrides.heroBgImage) {
+                setBgImage(overrides.heroBgImage);
+            }
+        });
+        return unsubscribe;
+    }, []);
+
     const title = siteContent?.heroTitle || "RACE. ANALYZE. PREDICT.";
     const highlight = siteContent?.heroTitleHighlight || "ANALYZE.";
     const subtitle = siteContent?.heroSubtitle || "The ultimate AI-powered hub for Teams, Drivers & Live Strategy.";

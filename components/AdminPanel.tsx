@@ -13,13 +13,16 @@ import {
     syncAllBotsRequest
 } from '../services/adminService';
 import { fetchAllBotStatuses, resetResultsCache } from '../services/botService';
-import { SiteContent, CustomArticle } from '../types';
+import { SiteContent, CustomArticle, MediaOverrides, SeriesId } from '../types';
 import { 
     Shield, Key, Lock, CheckCircle2, AlertTriangle, 
     Sparkles, RefreshCw, Eye, EyeOff, Save, Trash2, Plus, 
     Globe, ArrowLeft, LogOut, Cpu, Layout, FileText, ExternalLink,
-    User, Bell, Edit3, Radio, Database, Users as UsersIcon, Trophy as TrophyIcon
+    User, Bell, Edit3, Radio, Database, Users as UsersIcon, Trophy as TrophyIcon,
+    Image as ImageIcon, UploadCloud, Layers, Palette, FolderCheck
 } from 'lucide-react';
+import { getTeamsForSeries } from '../services/teamData';
+import { getLocalMediaOverrides, saveMediaConfig, DEFAULT_MEDIA_CONFIG, fetchRemoteMediaConfig } from '../services/mediaService';
 
 interface AdminPanelProps {
     onBackToSite?: () => void;
@@ -58,7 +61,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
     const [currentAdminUser, setCurrentAdminUser] = useState<string>('bouden');
 
     // Active Admin Tab
-    const [activeTab, setActiveTab] = useState<'gemini' | 'content' | 'news' | 'bots' | 'users' | 'security'>('gemini');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'content' | 'media' | 'news' | 'bots' | 'users' | 'security'>('media');
+
+    // Media Manager State
+    const [mediaOverrides, setMediaOverrides] = useState<MediaOverrides>(getLocalMediaOverrides);
+    const [mediaSubTab, setMediaSubTab] = useState<'championships' | 'teams' | 'drivers' | 'hero'>('championships');
+    const [mediaSeriesFilter, setMediaSeriesFilter] = useState<SeriesId>(SeriesId.F1);
+    const [savingMedia, setSavingMedia] = useState<boolean>(false);
 
     // Bots Tab State
     const [botList, setBotList] = useState<any[]>([]);
@@ -241,6 +250,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
             setStatusMessage({ type: 'error', text: err.message || 'فشل حفظ المحتوى' });
         } finally {
             setSavingContent(false);
+        }
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 4 * 1024 * 1024) {
+            setStatusMessage({ type: 'error', text: 'حجم الصورة كبير، يرجى اختيار ملف بحجم أقل من 4 ميغابايت' });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                callback(reader.result);
+                setStatusMessage({ type: 'info', text: 'تم تحميل ومعاينة الصورة بنجاح! اضغط على "حفظ وتطبيق التعديلات" بالأسفل لتثبيتها في الواجهة.' });
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSaveMedia = async () => {
+        setSavingMedia(true);
+        setStatusMessage(null);
+        try {
+            const res = await saveMediaConfig(mediaOverrides);
+            setStatusMessage({ 
+                type: 'success', 
+                text: res.message || 'تم حفظ وتطبيق وسائط وشعارات المنصة بنجاح في الواجهة العامة فوراً' 
+            });
+            if (mediaOverrides.heroBgImage && heroBgImage !== mediaOverrides.heroBgImage) {
+                setHeroBgImage(mediaOverrides.heroBgImage);
+            }
+        } catch (err: any) {
+            setStatusMessage({ type: 'error', text: err.message || 'فشل حفظ وتطبيق الوسائط' });
+        } finally {
+            setSavingMedia(false);
+        }
+    };
+
+    const handleResetMediaDefaults = () => {
+        if (window.confirm('هل تريد استعادة جميع صور وشعارات البطولات والفرق الافتراضية عالية الدقة؟')) {
+            const def = { ...DEFAULT_MEDIA_CONFIG };
+            setMediaOverrides(def);
+            saveMediaConfig(def).then(() => {
+                setStatusMessage({ type: 'info', text: 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة وتطبيقها فوراً' });
+            });
         }
     };
 
@@ -613,6 +668,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                     </button>
 
                     <button
+                        onClick={() => setActiveTab('media')}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide transition-all ${
+                            activeTab === 'media'
+                                ? 'bg-brand-red text-white shadow-lg shadow-brand-red/30'
+                                : 'bg-dark-800 text-gray-400 hover:text-white hover:bg-dark-700'
+                        }`}
+                    >
+                        <ImageIcon className="w-4 h-4 text-amber-400" />
+                        <span>إدارة الأيقونات والصور Media Manager</span>
+                    </button>
+
+                    <button
                         onClick={() => setActiveTab('news')}
                         className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold tracking-wide transition-all ${
                             activeTab === 'news'
@@ -973,6 +1040,551 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                 <span>حفظ وتطبيق التغييرات على الموقع</span>
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* TAB: MEDIA & BRAND MANAGER */}
+                {activeTab === 'media' && (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        {/* Top Media Manager Banner & Global Actions */}
+                        <div className="bg-gradient-to-r from-dark-800 via-dark-800/90 to-dark-800 border border-white/10 rounded-2xl p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
+                            <div className="space-y-2">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>نظام إدارة الهوية البصرية والوسائط الحية (Live Media Hub)</span>
+                                </div>
+                                <h2 className="text-2xl sm:text-3xl font-display font-black text-white">
+                                    إدارة الأيقونات والصور والشعارات الرسمية
+                                </h2>
+                                <p className="text-sm text-gray-300 max-w-2xl leading-relaxed">
+                                    تحكم كامل بروابط وملفات صور وشعارات البطولات الست، الفرق وسياراتها، السائقين، وصورة الـ Hero Section. يتم حفظ كافة التعديلات وتطبيقها فوراً في الواجهة العامة للزوار.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 shrink-0">
+                                <button
+                                    onClick={handleResetMediaDefaults}
+                                    type="button"
+                                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold border border-white/10 transition-colors flex items-center gap-2"
+                                    title="استعادة الصور والشعارات الأصلية عالية الدقة"
+                                >
+                                    <RefreshCw className="w-4 h-4 text-gray-400" />
+                                    <span>استعادة الافتراضي</span>
+                                </button>
+
+                                <button
+                                    onClick={handleSaveMedia}
+                                    disabled={savingMedia}
+                                    className="px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white text-sm font-bold shadow-lg shadow-brand-red/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {savingMedia ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    <span>حفظ وتطبيق التعديلات فوراً</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Sub Tab Navigation */}
+                        <div className="flex flex-wrap items-center gap-2 bg-dark-800/80 p-1.5 rounded-2xl border border-white/10">
+                            <button
+                                onClick={() => setMediaSubTab('championships')}
+                                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                                    mediaSubTab === 'championships'
+                                        ? 'bg-brand-red text-white shadow-md shadow-brand-red/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                            >
+                                <TrophyIcon className="w-4 h-4" />
+                                <span>شعارات وخلفيات البطولات الست (Official 6)</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMediaSubTab('teams')}
+                                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                                    mediaSubTab === 'teams'
+                                        ? 'bg-brand-red text-white shadow-md shadow-brand-red/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                            >
+                                <Layers className="w-4 h-4" />
+                                <span>شعارات وسيارات الفرق (Logos & Cars)</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMediaSubTab('drivers')}
+                                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                                    mediaSubTab === 'drivers'
+                                        ? 'bg-brand-red text-white shadow-md shadow-brand-red/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                            >
+                                <UsersIcon className="w-4 h-4" />
+                                <span>صور السائقين (Driver Portraits)</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMediaSubTab('hero')}
+                                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                                    mediaSubTab === 'hero'
+                                        ? 'bg-brand-red text-white shadow-md shadow-brand-red/20'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                            >
+                                <ImageIcon className="w-4 h-4" />
+                                <span>صورة الـ Hero Section الرئيسية</span>
+                            </button>
+                        </div>
+
+                        {/* SUB-TAB 1: CHAMPIONSHIPS LOGOS & COVERS */}
+                        {mediaSubTab === 'championships' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {[
+                                    { key: 'Formula 1', id: SeriesId.F1, title: 'Formula 1 (F1®)', badge: 'FIA World Championship' },
+                                    { key: 'MotoGP', id: SeriesId.MOTOGP, title: 'MotoGP™', badge: 'FIM World Championship' },
+                                    { key: 'WEC', id: SeriesId.WEC, title: 'FIA WEC', badge: 'World Endurance Championship' },
+                                    { key: 'IMSA', id: SeriesId.IMSA, title: 'IMSA WeatherTech', badge: 'SportsCar Championship' },
+                                    { key: 'GT World Challenge', id: SeriesId.GT_WORLD_CHALLENGE, title: 'GT World Challenge', badge: 'SRO GT3 Series' },
+                                    { key: 'DTM', id: SeriesId.DTM, title: 'DTM Masters', badge: 'Deutsche Tourenwagen Masters' }
+                                ].map((item) => {
+                                    const currentLogo = mediaOverrides.championshipLogos?.[item.key] || mediaOverrides.championshipLogos?.[item.id] || DEFAULT_MEDIA_CONFIG.championshipLogos?.[item.key] || '';
+                                    const currentImg = mediaOverrides.championshipImages?.[item.key] || mediaOverrides.championshipImages?.[item.id] || DEFAULT_MEDIA_CONFIG.championshipImages?.[item.key] || '';
+
+                                    return (
+                                        <div key={item.key} className="bg-dark-800 border border-white/10 rounded-2xl p-6 space-y-6">
+                                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                                                <div>
+                                                    <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                                                        <TrophyIcon className="w-4 h-4 text-brand-red" />
+                                                        <span>{item.title}</span>
+                                                    </h3>
+                                                    <span className="text-xs text-gray-400 font-mono">{item.badge}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Championship Logo Input & Upload */}
+                                            <div className="space-y-3">
+                                                <label className="block text-xs font-semibold text-gray-300">
+                                                    شعار البطولة الرسمي (SVG / Transparent Logo)
+                                                </label>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-20 h-16 rounded-xl bg-dark-900 border border-white/15 p-2 flex items-center justify-center shrink-0">
+                                                        {currentLogo ? (
+                                                            <img src={currentLogo} alt={item.title} className="max-h-full max-w-full object-contain" />
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-500">لا يوجد شعار</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 space-y-2">
+                                                        <input 
+                                                            type="text"
+                                                            value={currentLogo}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setMediaOverrides(prev => ({
+                                                                    ...prev,
+                                                                    championshipLogos: {
+                                                                        ...(prev.championshipLogos || {}),
+                                                                        [item.key]: val,
+                                                                        [item.id]: val
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            placeholder="رابط الشعار الرسمي https://..."
+                                                            className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-red"
+                                                        />
+                                                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold cursor-pointer transition-colors">
+                                                            <UploadCloud className="w-3.5 h-3.5 text-brand-brightGreen" />
+                                                            <span>رفع ملف الشعار (Base64)</span>
+                                                            <input 
+                                                                type="file"
+                                                                accept="image/*"
+                                                                className="hidden"
+                                                                onChange={(e) => handleFileUpload(e, (base64) => {
+                                                                    setMediaOverrides(prev => ({
+                                                                        ...prev,
+                                                                        championshipLogos: {
+                                                                            ...(prev.championshipLogos || {}),
+                                                                            [item.key]: base64,
+                                                                            [item.id]: base64
+                                                                        }
+                                                                    }));
+                                                                })}
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Championship Action Photo */}
+                                            <div className="space-y-3 pt-3 border-t border-white/5">
+                                                <label className="block text-xs font-semibold text-gray-300">
+                                                    صورة بطاقة السباق الرسمية (High-Res Action Racing Photo)
+                                                </label>
+                                                <div className="relative h-28 w-full rounded-xl overflow-hidden bg-dark-900 border border-white/10">
+                                                    {currentImg && (
+                                                        <img src={currentImg} alt={item.title} className="w-full h-full object-cover" />
+                                                    )}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent"></div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={currentImg}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setMediaOverrides(prev => ({
+                                                                ...prev,
+                                                                championshipImages: {
+                                                                    ...(prev.championshipImages || {}),
+                                                                    [item.key]: val,
+                                                                    [item.id]: val
+                                                                }
+                                                            }));
+                                                        }}
+                                                        placeholder="رابط صورة السباق https://..."
+                                                        className="flex-1 bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-red"
+                                                    />
+                                                    <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors shrink-0">
+                                                        <UploadCloud className="w-3.5 h-3.5 text-brand-brightGreen" />
+                                                        <span>رفع صورة</span>
+                                                        <input 
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            onChange={(e) => handleFileUpload(e, (base64) => {
+                                                                setMediaOverrides(prev => ({
+                                                                    ...prev,
+                                                                    championshipImages: {
+                                                                        ...(prev.championshipImages || {}),
+                                                                        [item.key]: base64,
+                                                                        [item.id]: base64
+                                                                    }
+                                                                }));
+                                                            })}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* SUB-TAB 2: TEAMS LOGOS & CARS */}
+                        {mediaSubTab === 'teams' && (
+                            <div className="space-y-6">
+                                {/* Series Filter Pills */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 ml-2">اختر البطولة:</span>
+                                    {Object.values(SeriesId).map((s) => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setMediaSeriesFilter(s)}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                                mediaSeriesFilter === s
+                                                    ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
+                                                    : 'bg-dark-800 text-gray-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Teams Grid */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {getTeamsForSeries(mediaSeriesFilter).map((team) => {
+                                        const currentLogo = mediaOverrides.teamLogos?.[team.id] || team.logo;
+                                        const currentImg = mediaOverrides.teamImages?.[team.id] || team.image;
+
+                                        return (
+                                            <div key={team.id} className="bg-dark-800 border border-white/10 rounded-2xl overflow-hidden shadow-lg flex flex-col">
+                                                <div className="h-1.5 w-full" style={{ backgroundColor: team.logoColor }}></div>
+                                                <div className="p-6 space-y-5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <h3 className="text-lg font-display font-bold text-white">
+                                                                {team.name}
+                                                            </h3>
+                                                            <p className="text-xs text-gray-400">{team.fullName} • {team.car}</p>
+                                                        </div>
+                                                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-white font-mono text-[11px] font-bold">
+                                                            #{team.rank || 1}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Team Logo Editor */}
+                                                    <div className="space-y-2">
+                                                        <label className="block text-xs font-semibold text-gray-300">
+                                                            شعار الفريق (Team Logo)
+                                                        </label>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-16 h-12 rounded-xl bg-white/95 p-1.5 flex items-center justify-center shrink-0 border border-white/20">
+                                                                {currentLogo ? (
+                                                                    <img src={currentLogo} alt={team.name} className="max-h-full max-w-full object-contain" />
+                                                                ) : (
+                                                                    <span className="text-[10px] text-gray-400">لا يوجد</span>
+                                                                )}
+                                                            </div>
+                                                            <input 
+                                                                type="text"
+                                                                value={currentLogo}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setMediaOverrides(prev => ({
+                                                                        ...prev,
+                                                                        teamLogos: { ...(prev.teamLogos || {}), [team.id]: val }
+                                                                    }));
+                                                                }}
+                                                                placeholder="رابط الشعار..."
+                                                                className="flex-1 bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-red"
+                                                            />
+                                                            <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors shrink-0">
+                                                                <UploadCloud className="w-3.5 h-3.5" />
+                                                                <input 
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    onChange={(e) => handleFileUpload(e, (b64) => {
+                                                                        setMediaOverrides(prev => ({
+                                                                            ...prev,
+                                                                            teamLogos: { ...(prev.teamLogos || {}), [team.id]: b64 }
+                                                                        }));
+                                                                    })}
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Team Car Photo Editor */}
+                                                    <div className="space-y-2 pt-2 border-t border-white/5">
+                                                        <label className="block text-xs font-semibold text-gray-300">
+                                                            صورة السيارة الرسمية (Chassis / Car Photo)
+                                                        </label>
+                                                        <div className="relative h-28 w-full rounded-xl overflow-hidden bg-dark-900 border border-white/10">
+                                                            {currentImg && (
+                                                                <img src={currentImg} alt={team.name} className="w-full h-full object-cover" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <input 
+                                                                type="text"
+                                                                value={currentImg}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setMediaOverrides(prev => ({
+                                                                        ...prev,
+                                                                        teamImages: { ...(prev.teamImages || {}), [team.id]: val }
+                                                                    }));
+                                                                }}
+                                                                placeholder="رابط صورة السيارة..."
+                                                                className="flex-1 bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-red"
+                                                            />
+                                                            <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors shrink-0">
+                                                                <UploadCloud className="w-3.5 h-3.5" />
+                                                                <input 
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    onChange={(e) => handleFileUpload(e, (b64) => {
+                                                                        setMediaOverrides(prev => ({
+                                                                            ...prev,
+                                                                            teamImages: { ...(prev.teamImages || {}), [team.id]: b64 }
+                                                                        }));
+                                                                    })}
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SUB-TAB 3: DRIVER PORTRAITS */}
+                        {mediaSubTab === 'drivers' && (
+                            <div className="space-y-6">
+                                {/* Series Filter Pills */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 ml-2">اختر البطولة:</span>
+                                    {Object.values(SeriesId).map((s) => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setMediaSeriesFilter(s)}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                                mediaSeriesFilter === s
+                                                    ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
+                                                    : 'bg-dark-800 text-gray-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Drivers Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {getTeamsForSeries(mediaSeriesFilter).flatMap(t => t.drivers.map(d => ({ ...d, teamName: t.name }))).map((driver) => {
+                                        const currentImg = mediaOverrides.driverImages?.[driver.name] || driver.image || '';
+
+                                        return (
+                                            <div key={driver.name} className="bg-dark-800 border border-white/10 rounded-2xl p-5 space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-14 h-16 rounded-xl overflow-hidden bg-dark-900 border border-white/10 shrink-0">
+                                                        {currentImg ? (
+                                                            <img src={currentImg} alt={driver.name} className="w-full h-full object-cover object-top" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold">
+                                                                #{driver.number}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="overflow-hidden">
+                                                        <span className="font-display font-bold text-white block text-sm truncate">{driver.name}</span>
+                                                        <span className="text-xs text-gray-400 block">{driver.teamName}</span>
+                                                        <span className="text-[10px] font-mono text-brand-brightGreen">#{driver.number} • {driver.nationality}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={currentImg}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setMediaOverrides(prev => ({
+                                                                ...prev,
+                                                                driverImages: { ...(prev.driverImages || {}), [driver.name]: val }
+                                                            }));
+                                                        }}
+                                                        placeholder="رابط صورة السائق..."
+                                                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-red"
+                                                    />
+                                                    <label className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5">
+                                                        <UploadCloud className="w-3.5 h-3.5 text-brand-brightGreen" />
+                                                        <span>رفع صورة السائق</span>
+                                                        <input 
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            onChange={(e) => handleFileUpload(e, (b64) => {
+                                                                setMediaOverrides(prev => ({
+                                                                    ...prev,
+                                                                    driverImages: { ...(prev.driverImages || {}), [driver.name]: b64 }
+                                                                }));
+                                                            })}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SUB-TAB 4: HERO SECTION MAIN BANNER */}
+                        {mediaSubTab === 'hero' && (
+                            <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
+                                <div>
+                                    <h3 className="text-xl font-display font-bold text-white mb-1">
+                                        صورة خلفية الواجهة الرئيسية (Hero Section Background)
+                                    </h3>
+                                    <p className="text-xs text-gray-400">
+                                        هذه هي الصورة الكبيرة التي تظهر في أعلى الموقع عند دخول الزائر. يمكنك استخدام الرابط المباشر، أو رفع صورة خاصة، أو اختيار أحد النماذج الرسمية فائقة الدقة.
+                                    </p>
+                                </div>
+
+                                {/* Live Preview Banner */}
+                                <div className="relative h-64 sm:h-80 w-full rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-dark-900">
+                                    <img 
+                                        src={mediaOverrides.heroBgImage || heroBgImage || DEFAULT_MEDIA_CONFIG.heroBgImage || PRESET_IMAGES[0].url} 
+                                        alt="Hero Background Preview" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/40 to-transparent"></div>
+                                    <div className="absolute bottom-6 left-6 right-6 text-center">
+                                        <span className="px-3 py-1 rounded-full bg-brand-red text-white text-xs font-bold uppercase tracking-wider inline-block mb-2 shadow-lg">
+                                            معاينة حية للـ Hero
+                                        </span>
+                                        <h4 className="text-2xl sm:text-4xl font-display font-extrabold text-white drop-shadow-md">
+                                            RACE. <span className="text-brand-red">ANALYZE.</span> PREDICT.
+                                        </h4>
+                                    </div>
+                                </div>
+
+                                {/* Custom URL and Upload Row */}
+                                <div className="space-y-3">
+                                    <label className="block text-xs font-semibold text-gray-300">
+                                        رابط الصورة المباشر أو الرفع
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                                        <input 
+                                            type="text"
+                                            value={mediaOverrides.heroBgImage || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setMediaOverrides(prev => ({ ...prev, heroBgImage: val }));
+                                            }}
+                                            placeholder="https://images.unsplash.com/..."
+                                            className="w-full sm:flex-1 bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                        />
+                                        <label className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-2 shrink-0">
+                                            <UploadCloud className="w-4 h-4 text-brand-brightGreen" />
+                                            <span>رفع صورة من جهازك</span>
+                                            <input 
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => handleFileUpload(e, (b64) => {
+                                                    setMediaOverrides(prev => ({ ...prev, heroBgImage: b64 }));
+                                                })}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Official High-Res Presets */}
+                                <div className="space-y-3 pt-4 border-t border-white/10">
+                                    <label className="block text-xs font-semibold text-gray-300">
+                                        نماذج رسمية فائقة الدقة (Official High-Res Presets):
+                                    </label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                        {[
+                                            { name: "Porsche 963 Le Mans", url: "https://newsroom.porsche.com/.imaging/mte/porsche-templating-theme/image_1290x726/dam/pnr/2023/Motorsports/WEC/Le-Mans-Test-Day/02-Porsche-963-Porsche-Penske-Motorsport.jpg/jcr:content/02-Porsche-963-Porsche-Penske-Motorsport.jpg" },
+                                            { name: "Formula 1 Night Circuit", url: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=2400&auto=format&fit=crop" },
+                                            { name: "Ferrari 499P Hypercar", url: "https://images.unsplash.com/photo-1592634976722-13b3c3c78864?q=80&w=2400&auto=format&fit=crop" },
+                                            { name: "Toyota Gazoo Racing Fuji", url: "https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=2400&auto=format&fit=crop" },
+                                            { name: "MotoGP Ducati Speed", url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=2400&auto=format&fit=crop" },
+                                            { name: "DTM Red Bull Ring", url: "https://images.unsplash.com/photo-1628185016593-3d0d8299d63c?q=80&w=2400&auto=format&fit=crop" }
+                                        ].map((preset, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => {
+                                                    setMediaOverrides(prev => ({ ...prev, heroBgImage: preset.url }));
+                                                }}
+                                                className={`group relative rounded-xl overflow-hidden border p-1 text-left transition-all ${
+                                                    mediaOverrides.heroBgImage === preset.url
+                                                        ? 'border-brand-brightGreen ring-2 ring-brand-brightGreen/50'
+                                                        : 'border-white/10 hover:border-white/30'
+                                                }`}
+                                            >
+                                                <div className="h-16 w-full rounded-lg overflow-hidden bg-dark-900 mb-1.5">
+                                                    <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                </div>
+                                                <span className="block text-[11px] font-bold text-gray-300 truncate group-hover:text-white">
+                                                    {preset.name}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

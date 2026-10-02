@@ -180,52 +180,36 @@ function App() {
         />
 
         <main>
-          {/* If visitor attempted to access /admin or #admin on the main site -> Show Access Closed Notice */}
+          {/* If visitor attempted to access /admin or #admin on the main site -> Show Access Restricted / Not Found */}
           {isBlockedAdminAttempt ? (
-            <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-              <div className="bg-dark-800/90 border border-red-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-red via-orange-500 to-amber-500"></div>
-
+            <div className="max-w-2xl mx-auto px-4 py-24 text-center">
+              <div className="bg-dark-800/90 border border-white/10 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
                 <div className="w-16 h-16 rounded-2xl bg-brand-red/10 border border-brand-red/30 text-brand-red flex items-center justify-center mx-auto mb-6 shadow-lg shadow-brand-red/20">
                   <ShieldAlert className="w-8 h-8" />
                 </div>
 
-                <span className="px-3.5 py-1 rounded-full bg-red-950/80 border border-red-500/40 text-red-300 text-xs font-bold uppercase tracking-wider inline-block mb-3">
-                  مسار مغلق من الواجهة العامة / Access Restricted
+                <span className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-wider inline-block mb-3">
+                  404 • الصفحة غير موجودة
                 </span>
 
-                <h1 className="text-2xl sm:text-3xl font-display font-black text-white mb-4">
-                  تم إغلاق مسار <code className="text-brand-red font-mono px-2 py-0.5 bg-white/5 rounded-lg">/admin</code> نهائياً
+                <h1 className="text-2xl sm:text-3xl font-display font-black text-white mb-3">
+                  عذراً، هذه الصفحة غير متاحة للزوار
                 </h1>
 
-                <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-6 max-w-xl mx-auto">
-                  حفاظاً على أمان المنصة، تم فصل لوحة تحكم الأدمن بالكامل عن الموقع الرئيسي وتحويلها إلى نظام مستقل يعمل عبر <strong className="text-white">Subdomain مخصص</strong>:
-                  <br />
-                  <span className="inline-block mt-2 font-mono text-brand-brightGreen bg-dark-900 px-4 py-1.5 rounded-xl border border-white/10 text-sm">
-                    bouden-admin.vercel.app
-                  </span>
+                <p className="text-gray-400 text-sm leading-relaxed mb-6 max-w-md mx-auto">
+                  الصفحة أو المسار المطلوب غير متوفر على الموقع العام. يرجى تصفح بطولات وسباقات موسم 2026 عبر الصفحة الرئيسية.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button
-                    onClick={switchToAdminSubdomain}
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white font-bold text-sm tracking-wide shadow-lg shadow-brand-red/30 flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>الدخول عبر Subdomain الأدمن المستقل</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsBlockedAdminAttempt(false);
-                      handleNavigate('home');
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>العودة للصفحة الرئيسية</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setIsBlockedAdminAttempt(false);
+                    handleNavigate('home');
+                  }}
+                  className="px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white font-bold text-sm flex items-center justify-center gap-2 mx-auto transition-colors shadow-lg shadow-brand-red/30"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>العودة للصفحة الرئيسية (Home)</span>
+                </button>
               </div>
             </div>
           ) : currentView === 'home' ? (
@@ -253,19 +237,6 @@ function App() {
       </div>
 
       <Footer />
-
-      {/* Floating Subdomain Testing Switcher (Pill for seamless preview testing between Main Site and Subdomain Admin) */}
-      <div className="fixed bottom-4 left-4 z-40">
-        <button
-          onClick={switchToAdminSubdomain}
-          className="group px-3 py-1.5 rounded-full bg-dark-800/90 hover:bg-dark-700 text-gray-400 hover:text-white border border-white/15 text-[11px] font-bold shadow-2xl backdrop-blur-md flex items-center gap-2 transition-all duration-200 hover:border-brand-red"
-          title="محاكاة التبديل إلى Subdomain الأدمن المستقل (bouden-admin.vercel.app)"
-        >
-          <span className="w-2 h-2 rounded-full bg-yellow-400 group-hover:bg-brand-red transition-colors"></span>
-          <span>تبديل النطاق: <strong>bouden-admin.vercel.app</strong></span>
-          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-        </button>
-      </div>
 
       {/* User Login & Register Modal */}
       <AuthModal

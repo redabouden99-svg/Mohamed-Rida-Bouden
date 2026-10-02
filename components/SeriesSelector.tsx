@@ -1,23 +1,33 @@
-import React from 'react';
-import { SeriesId } from '../types';
+import React, { useState, useEffect } from 'react';
+import { SeriesId, MediaOverrides } from '../types';
 import { Users, Activity, ChevronRight, ShieldCheck } from 'lucide-react';
+import { resolveSeriesImage, resolveSeriesLogo, subscribeMediaChanges, getLocalMediaOverrides } from '../services/mediaService';
 
 interface SeriesSelectorProps {
     onSelect: (series: SeriesId, tab?: 'news' | 'analysis' | 'prediction' | 'teams') => void;
 }
 
 const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
-    const seriesData = [
+    const [, setMediaState] = useState<MediaOverrides>(getLocalMediaOverrides);
+
+    useEffect(() => {
+        const unsubscribe = subscribeMediaChanges((updated) => {
+            setMediaState(updated);
+        });
+        return unsubscribe;
+    }, []);
+
+    const rawSeriesData = [
         { 
             id: SeriesId.F1, 
             color: 'border-brand-red', 
             accentColor: '#ff1801',
             badgeBg: 'bg-red-600/20 text-red-400 border-red-500/30',
-            image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1200&auto=format&fit=crop',
             label: 'FORMULA 1',
             subLabel: 'FIA World Championship 2026',
             roundBadge: 'Round 18 • Singapore GP',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg',
             logoText: 'F1®',
             category: 'Open-Wheel Hybrid'
         },
@@ -26,11 +36,11 @@ const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
             color: 'border-blue-500', 
             accentColor: '#0090ff',
             badgeBg: 'bg-blue-600/20 text-blue-400 border-blue-500/30',
-            image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200&auto=format&fit=crop',
             label: 'MOTOGP',
             subLabel: 'FIM World Championship 2026',
             roundBadge: 'Round 15 • Mandalika GP',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Moto_Gp_logo.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Moto_Gp_logo.svg',
             logoText: 'MotoGP™',
             category: 'Prototype Motorcycles'
         },
@@ -39,11 +49,11 @@ const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
             color: 'border-emerald-500', 
             accentColor: '#10b981',
             badgeBg: 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30',
-            image: 'https://images.unsplash.com/photo-1592634976722-13b3c3c78864?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1592634976722-13b3c3c78864?q=80&w=1200&auto=format&fit=crop',
             label: 'FIA WEC',
             subLabel: 'World Endurance Championship',
             roundBadge: 'Round 7 • 6 Hours of Fuji',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/e/e8/FIA_WEC_logo.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/e/e8/FIA_WEC_logo.svg',
             logoText: 'WEC',
             category: 'Hypercar & LMGT3'
         },
@@ -52,11 +62,11 @@ const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
             color: 'border-amber-500', 
             accentColor: '#f59e0b',
             badgeBg: 'bg-amber-600/20 text-amber-400 border-amber-500/30',
-            image: 'https://images.unsplash.com/photo-1558564244-64506927d2c3?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1558564244-64506927d2c3?q=80&w=1200&auto=format&fit=crop',
             label: 'IMSA WEATHERTECH',
             subLabel: 'SportsCar Championship',
             roundBadge: 'Round 10 • Battle on the Bricks',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/d/d4/IMSA_WeatherTech_SportsCar_Championship_logo.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/d/d4/IMSA_WeatherTech_SportsCar_Championship_logo.svg',
             logoText: 'IMSA',
             category: 'GTP & GTD PRO'
         },
@@ -65,11 +75,11 @@ const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
             color: 'border-purple-500', 
             accentColor: '#a855f7',
             badgeBg: 'bg-purple-600/20 text-purple-400 border-purple-500/30',
-            image: 'https://images.unsplash.com/photo-1628185016593-3d0d8299d63c?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1628185016593-3d0d8299d63c?q=80&w=1200&auto=format&fit=crop',
             label: 'GT WORLD CHALLENGE',
             subLabel: 'Fanatec GT Europe & America',
             roundBadge: 'Round 8 • Circuit de Barcelona',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/7/77/GT_World_Challenge_logo.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/7/77/GT_World_Challenge_logo.svg',
             logoText: 'GTWC',
             category: 'FIA GT3 Sprint & Enduro'
         },
@@ -78,15 +88,21 @@ const SeriesSelector: React.FC<SeriesSelectorProps> = ({ onSelect }) => {
             color: 'border-yellow-400', 
             accentColor: '#facc15',
             badgeBg: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30',
-            image: 'https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop',
+            defaultImage: 'https://images.unsplash.com/photo-1629219356886-c322b724497e?q=80&w=1200&auto=format&fit=crop',
             label: 'DTM MASTERS',
             subLabel: 'Deutsche Tourenwagen Masters',
             roundBadge: 'Round 14 • Red Bull Ring',
-            logoSvg: 'https://upload.wikimedia.org/wikipedia/commons/e/ee/DTM_Logo_2023.svg',
+            defaultLogo: 'https://upload.wikimedia.org/wikipedia/commons/e/ee/DTM_Logo_2023.svg',
             logoText: 'DTM',
             category: 'German GT3 Championship'
         },
     ];
+
+    const seriesData = rawSeriesData.map(s => ({
+        ...s,
+        image: resolveSeriesImage(s.id, s.defaultImage),
+        logoSvg: resolveSeriesLogo(s.id, s.defaultLogo)
+    }));
 
     return (
         <section className="py-24 bg-dark-900 relative overflow-hidden">

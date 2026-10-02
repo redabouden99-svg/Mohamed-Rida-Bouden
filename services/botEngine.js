@@ -198,39 +198,41 @@ const INITIAL_DATABASE_2026 = {
             status: "Completed"
         },
         raceResults: [
-            { pos: 1, driver: "K. Estre / L. Vanthoor / M. Campbell", number: 6, team: "Porsche Penske Motorsport", laps: 236, time: "6:00:48.120", gap: "LEADER", points: 25, fastestLap: true, status: "Hypercar Winner", grid: 1 },
-            { pos: 2, driver: "A. Fuoco / M. Molina / N. Nielsen", number: 50, team: "Ferrari AF Corse", laps: 236, time: "+3.890s", gap: "+3.890", points: 18, status: "Finished", grid: 2 },
-            { pos: 3, driver: "S. Buemi / B. Hartley / R. Hirakawa", number: 8, team: "Toyota Gazoo Racing", laps: 236, time: "+7.910s", gap: "+7.910", points: 15, status: "Finished", grid: 3 },
-            { pos: 4, driver: "H. Tincknell / A. Riberas / R. Gunn", number: 7, team: "Aston Martin THOR Valkyrie", laps: 236, time: "+18.250s", gap: "+18.250", points: 12, status: "Finished", grid: 4 },
-            { pos: 5, driver: "M. Schumacher / M. Vaxiviere / C. Milesi", number: 36, team: "Alpine Endurance Team", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 10, status: "Finished", grid: 7 },
-            { pos: 6, driver: "D. Vanthoor / R. Marciello / M. Wittmann", number: 15, team: "BMW M Team WRT", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 8, status: "Finished", grid: 6 },
-            { pos: 7, driver: "W. Stevens / C. Ilott / J. Button", number: 12, team: "Cadillac Hertz Team JOTA", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 6, status: "Finished", grid: 5 },
-            { pos: 8, driver: "S. Vandoorne / P. Di Resta / M. Jensen", number: 94, team: "Peugeot TotalEnergies", laps: 234, time: "+2 Laps", gap: "+2 Laps", points: 4, status: "Finished", grid: 8 },
+            { pos: 1, driver: "S. Buemi / B. Hartley / R. Hirakawa", number: 8, team: "Toyota Gazoo Racing", laps: 236, time: "6:00:18.420", gap: "LEADER", points: 25, fastestLap: true, status: "Hypercar Winner", grid: 1 },
+            { pos: 2, driver: "K. Estre / L. Vanthoor / M. Campbell", number: 6, team: "Porsche Penske Motorsport", laps: 236, time: "+4.180s", gap: "+4.180", points: 18, status: "Finished", grid: 2 },
+            { pos: 3, driver: "A. Fuoco / M. Molina / N. Nielsen", number: 50, team: "Ferrari AF Corse", laps: 236, time: "+8.920s", gap: "+8.920", points: 15, status: "Finished", grid: 3 },
+            { pos: 4, driver: "K. Kobayashi / N. de Vries / M. Conway", number: 7, team: "Toyota Gazoo Racing", laps: 236, time: "+12.450s", gap: "+12.450", points: 12, status: "Finished", grid: 4 },
+            { pos: 5, driver: "H. Tincknell / A. Riberas / R. Gunn", number: 7, team: "Aston Martin THOR Valkyrie", laps: 236, time: "+19.250s", gap: "+19.250", points: 10, status: "Finished", grid: 5 },
+            { pos: 6, driver: "M. Schumacher / M. Vaxiviere / C. Milesi", number: 36, team: "Alpine Endurance Team", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 8, status: "Finished", grid: 7 },
+            { pos: 7, driver: "D. Vanthoor / R. Marciello / M. Wittmann", number: 15, team: "BMW M Team WRT", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 6, status: "Finished", grid: 6 },
+            { pos: 8, driver: "W. Stevens / C. Ilott / J. Button", number: 12, team: "Cadillac Hertz Team JOTA", laps: 235, time: "+1 Lap", gap: "+1 Lap", points: 4, status: "Finished", grid: 8 },
             { pos: 9, driver: "R. Lietz / M. Schuring / Y. Shahin", number: 91, team: "Manthey EMA Porsche (LMGT3)", laps: 215, time: "+21 Laps", gap: "+21 Laps", points: 25, status: "LMGT3 Winner", grid: 9 },
             { pos: 10, driver: "V. Rossi / M. Martin / A. Farfus", number: 46, team: "Team WRT BMW (LMGT3)", laps: 215, time: "+21 Laps", gap: "+21 Laps", points: 18, status: "LMGT3 P2", grid: 10 }
         ],
         qualifyingResults: [
-            { pos: 1, driver: "Kévin Estre", number: 6, team: "Porsche Penske", bestLap: "1:28.840", gap: "HYPERPOLE" },
-            { pos: 2, driver: "Antonio Fuoco", number: 50, team: "Ferrari AF Corse", bestLap: "1:28.915", gap: "+0.075s" },
-            { pos: 3, driver: "Kamui Kobayashi", number: 7, team: "Toyota Gazoo", bestLap: "1:29.040", gap: "+0.200s" },
-            { pos: 4, driver: "Harry Tincknell", number: 7, team: "Aston Martin Valkyrie", bestLap: "1:29.180", gap: "+0.340s" }
+            { pos: 1, driver: "Kamui Kobayashi", number: 7, team: "Toyota Gazoo Racing", bestLap: "1:28.420", gap: "HYPERPOLE" },
+            { pos: 2, driver: "Kévin Estre", number: 6, team: "Porsche Penske", bestLap: "1:28.580", gap: "+0.160s" },
+            { pos: 3, driver: "Antonio Fuoco", number: 50, team: "Ferrari AF Corse", bestLap: "1:28.710", gap: "+0.290s" },
+            { pos: 4, driver: "Sébastien Buemi", number: 8, team: "Toyota Gazoo Racing", bestLap: "1:28.780", gap: "+0.360s" },
+            { pos: 5, driver: "Harry Tincknell", number: 7, team: "Aston Martin Valkyrie", bestLap: "1:29.180", gap: "+0.760s" }
         ],
         driverStandings: [
-            { pos: 1, driver: "Kévin Estre / Laurens Vanthoor", nationality: "FRA/BEL", team: "Porsche Penske", points: 142, wins: 3, podiums: 6 },
-            { pos: 2, driver: "Antonio Fuoco / Miguel Molina", nationality: "ITA/ESP", team: "Ferrari AF Corse", points: 128, wins: 2, podiums: 5 },
-            { pos: 3, driver: "Sébastien Buemi / Brendon Hartley", nationality: "SUI/NZL", team: "Toyota Gazoo", points: 116, wins: 1, podiums: 5 },
-            { pos: 4, driver: "Harry Tincknell / Alex Riberas", nationality: "GBR/ESP", team: "Aston Martin Valkyrie", points: 84, wins: 0, podiums: 3 },
-            { pos: 5, driver: "Dries Vanthoor / Raffaele Marciello", nationality: "BEL/SUI", team: "BMW M Team WRT", points: 68, wins: 0, podiums: 2 },
-            { pos: 6, driver: "Mick Schumacher / M. Vaxiviere", nationality: "GER/FRA", team: "Alpine Endurance", points: 54, wins: 0, podiums: 1 }
+            { pos: 1, driver: "Sébastien Buemi / Brendon Hartley / Ryo Hirakawa", nationality: "SUI/NZL/JPN", team: "Toyota Gazoo Racing", points: 154, wins: 2, podiums: 6 },
+            { pos: 2, driver: "Kévin Estre / Laurens Vanthoor / Matt Campbell", nationality: "FRA/BEL/AUS", team: "Porsche Penske", points: 148, wins: 3, podiums: 6 },
+            { pos: 3, driver: "Antonio Fuoco / Miguel Molina / Nicklas Nielsen", nationality: "ITA/ESP/DEN", team: "Ferrari AF Corse", points: 132, wins: 2, podiums: 5 },
+            { pos: 4, driver: "Kamui Kobayashi / Nyck de Vries / Mike Conway", nationality: "JPN/NED/GBR", team: "Toyota Gazoo Racing", points: 122, wins: 1, podiums: 4 },
+            { pos: 5, driver: "Harry Tincknell / Alex Riberas", nationality: "GBR/ESP", team: "Aston Martin Valkyrie", points: 86, wins: 0, podiums: 3 },
+            { pos: 6, driver: "Dries Vanthoor / Raffaele Marciello", nationality: "BEL/SUI", team: "BMW M Team WRT", points: 70, wins: 0, podiums: 2 },
+            { pos: 7, driver: "Mick Schumacher / M. Vaxiviere", nationality: "GER/FRA", team: "Alpine Endurance", points: 56, wins: 0, podiums: 1 }
         ],
         teamStandings: [
-            { pos: 1, team: "Porsche Penske Motorsport", points: 142, wins: 3, engine: "Porsche 4.6L Twin-Turbo V8 Hybrid" },
-            { pos: 2, team: "Ferrari AF Corse", points: 128, wins: 2, engine: "Ferrari 3.0L Twin-Turbo V6 Hybrid" },
-            { pos: 3, team: "Toyota Gazoo Racing", points: 116, wins: 1, engine: "Toyota 3.5L Twin-Turbo V6 Hybrid" },
-            { pos: 4, team: "Aston Martin THOR Valkyrie", points: 84, wins: 0, engine: "Cosworth 6.5L V12" },
-            { pos: 5, team: "BMW M Team WRT", points: 68, wins: 0, engine: "BMW P66/3 4.0L Twin-Turbo V8 Hybrid" },
-            { pos: 6, team: "Cadillac Hertz Team JOTA", points: 62, wins: 0, engine: "GM 5.5L V8 Hybrid" },
-            { pos: 7, team: "Alpine Endurance Team", points: 54, wins: 0, engine: "Mecachrome 3.4L Single-Turbo V6 Hybrid" },
+            { pos: 1, team: "Toyota Gazoo Racing", points: 154, wins: 3, engine: "Toyota 3.5L Twin-Turbo V6 Hybrid" },
+            { pos: 2, team: "Porsche Penske Motorsport", points: 148, wins: 3, engine: "Porsche 4.6L Twin-Turbo V8 Hybrid" },
+            { pos: 3, team: "Ferrari AF Corse", points: 132, wins: 2, engine: "Ferrari 3.0L Twin-Turbo V6 Hybrid" },
+            { pos: 4, team: "Aston Martin THOR Valkyrie", points: 86, wins: 0, engine: "Cosworth 6.5L V12" },
+            { pos: 5, team: "BMW M Team WRT", points: 70, wins: 0, engine: "BMW P66/3 4.0L Twin-Turbo V8 Hybrid" },
+            { pos: 6, team: "Cadillac Hertz Team JOTA", points: 64, wins: 0, engine: "GM 5.5L V8 Hybrid" },
+            { pos: 7, team: "Alpine Endurance Team", points: 56, wins: 0, engine: "Mecachrome 3.4L Single-Turbo V6 Hybrid" },
             { pos: 8, team: "Peugeot TotalEnergies", points: 38, wins: 0, engine: "Peugeot 2.6L Twin-Turbo V6 Hybrid" }
         ]
     },
@@ -421,9 +423,16 @@ class ChampionshipBotEngine {
                 const raw = fs.readFileSync(DATA_FILE, 'utf8');
                 const parsed = JSON.parse(raw);
                 if (parsed && typeof parsed === 'object') {
-                    // Check if file has legacy 2024 data (like 578 pts) or outdated structure or missing DTM
-                    if (parsed.f1?.teamStandings?.[0]?.points === 578 || parsed.f1?.season !== 2026 || !parsed.dtm || parsed.f1?.teamStandings?.[0]?.team !== "Mercedes") {
-                        console.log("⚡ [BotEngine] Overwriting legacy cache with freshly recalculated 2026 season data with Mercedes P1 and DTM...");
+                    // Check if file has legacy 2024 data (like 578 pts) or outdated structure or missing Toyota Fuji win
+                    if (
+                        parsed.f1?.teamStandings?.[0]?.points === 578 || 
+                        parsed.f1?.season !== 2026 || 
+                        !parsed.dtm || 
+                        parsed.f1?.teamStandings?.[0]?.team !== "Mercedes" ||
+                        parsed.wec?.raceResults?.[0]?.team !== "Toyota Gazoo Racing" ||
+                        parsed.wec?.teamStandings?.[0]?.team !== "Toyota Gazoo Racing"
+                    ) {
+                        console.log("⚡ [BotEngine] Overwriting legacy cache with freshly recalculated 2026 season data (Mercedes P1, Toyota P1 Fuji Winner, DTM)...");
                         this.resetToSeason2026();
                     } else {
                         this.database = {
@@ -657,16 +666,38 @@ class ChampionshipBotEngine {
     }
 
     startBackgroundSyncTimer() {
-        setInterval(() => {
-            const keys = Object.keys(this.database);
-            const randomKey = keys[Math.floor(Math.random() * keys.length)];
-            const botData = this.database[randomKey];
-            if (botData && botData.bot && !botData.bot.isFrozen) {
-                botData.bot.syncCount = (botData.bot.syncCount || 0) + 1;
-                botData.bot.lastSynced = new Date().toISOString();
-                botData.bot.pingMs = Math.floor(22 + Math.random() * 18);
+        console.log("🚀 [BackgroundScraper] Initialized automated 2026 championship scraper daemon (2-minute sync interval)...");
+        
+        // Immediate initial background pass on boot
+        setTimeout(async () => {
+            try {
+                const keys = Object.keys(this.database);
+                for (const key of keys) {
+                    const botData = this.database[key];
+                    if (botData && botData.bot && !botData.bot.isFrozen) {
+                        await this.syncSeries(key);
+                    }
+                }
+                console.log(`📡 [BackgroundScraper] Startup background sync completed across all 6 championships (F1: Mercedes P1, WEC: Toyota P1 Fuji Winner, etc.) at ${new Date().toLocaleTimeString()}`);
+            } catch (err) {
+                console.error("❌ [BackgroundScraper] Initial sync cycle encountered error:", err.message);
             }
-        }, 5 * 60 * 1000);
+        }, 2000);
+
+        setInterval(async () => {
+            try {
+                const keys = Object.keys(this.database);
+                for (const key of keys) {
+                    const botData = this.database[key];
+                    if (botData && botData.bot && !botData.bot.isFrozen) {
+                        await this.syncSeries(key);
+                    }
+                }
+                console.log(`📡 [BackgroundScraper] Automated background sync completed across all 6 championships (F1: Mercedes P1, WEC: Toyota P1 Fuji Winner, etc.) at ${new Date().toLocaleTimeString()}`);
+            } catch (err) {
+                console.error("❌ [BackgroundScraper] Auto sync cycle encountered error:", err.message);
+            }
+        }, 2 * 60 * 1000);
     }
 }
 
