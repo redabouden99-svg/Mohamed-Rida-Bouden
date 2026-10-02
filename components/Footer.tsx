@@ -1,4 +1,5 @@
 import React from 'react';
+import { Shield } from 'lucide-react';
 
 const Footer: React.FC = () => {
     return (
@@ -13,6 +14,11 @@ const Footer: React.FC = () => {
                     <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
                     <a href="/api/health" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">API Status</a>
                     <a href="#series-selector" className="hover:text-white transition-colors">Championships</a>
+                    <span className="text-gray-600">•</span>
+                    <a href="/admin" className="hover:text-brand-red transition-colors inline-flex items-center gap-1.5 text-xs text-gray-400">
+                        <Shield className="w-3.5 h-3.5 text-brand-red" />
+                        <span>Admin Portal</span>
+                    </a>
                     <span className="text-gray-600">•</span>
                     <span className="text-gray-400 text-xs">Season 2026 Live Telemetry</span>
                 </div>

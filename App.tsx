@@ -12,36 +12,31 @@ import RaceWeekendCountdown from './components/RaceWeekendCountdown';
 import { SeriesId, SiteContent } from './types';
 import { fetchSiteContent } from './services/adminService';
 import { getStoredUser, UserAccount } from './services/authService';
-import { ShieldAlert, ArrowLeft, ExternalLink, Globe, Lock, ArrowRight } from 'lucide-react';
+import { initMediaRealtimeSync, fetchRemoteMediaConfig } from './services/mediaService';
+import { Globe, Lock, Shield } from 'lucide-react';
 
 function App() {
-  // Subdomain Detection: Check if current hostname is admin subdomain or requested via ?subdomain=admin
-  const checkIsAdminSubdomain = (): boolean => {
+  // Detection: Check if current route/hostname is admin portal (?subdomain=admin, /admin, #admin)
+  const checkIsAdminPortal = (): boolean => {
     if (typeof window === 'undefined') return false;
     const host = window.location.hostname.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
     const search = new URLSearchParams(window.location.search);
     return (
       host.startsWith('admin.') ||
       host.startsWith('bouden-admin.') ||
+      path === '/admin' ||
+      path.startsWith('/admin') ||
+      hash === '#admin' ||
+      search.get('admin') === 'true' ||
       search.get('subdomain') === 'admin' ||
       search.get('domain') === 'admin' ||
       search.get('portal') === 'admin'
     );
   };
 
-  const [isAdminSubdomain, setIsAdminSubdomain] = useState<boolean>(checkIsAdminSubdomain);
-
-  // Check if visitor on main site is attempting to access /admin or #admin
-  const checkIsBlockedAdminPath = (): boolean => {
-    if (typeof window === 'undefined') return false;
-    if (checkIsAdminSubdomain()) return false;
-    const path = window.location.pathname.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    const search = new URLSearchParams(window.location.search);
-    return path === '/admin' || path.startsWith('/admin/') || hash === '#admin' || search.get('blocked_admin') === 'true';
-  };
-
-  const [isBlockedAdminAttempt, setIsBlockedAdminAttempt] = useState<boolean>(checkIsBlockedAdminPath);
+  const [isAdminPortal, setIsAdminPortal] = useState<boolean>(checkIsAdminPortal);
 
   // Main views on public site
   const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
@@ -54,11 +49,14 @@ function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
-  // Load dynamic site content
+  // Load dynamic site content & start real-time media server sync
   useEffect(() => {
     fetchSiteContent().then(content => {
       if (content) setSiteContent(content);
     });
+    // Automatic live sync across all devices & visitors
+    initMediaRealtimeSync();
+    fetchRemoteMediaConfig();
   }, []);
 
   // Sync user state on storage/event changes
@@ -73,9 +71,7 @@ function App() {
   // Listen for browser navigation & URL changes
   useEffect(() => {
     const handleLocationChange = () => {
-      const isSub = checkIsAdminSubdomain();
-      setIsAdminSubdomain(isSub);
-      setIsBlockedAdminAttempt(checkIsBlockedAdminPath());
+      setIsAdminPortal(checkIsAdminPortal());
     };
 
     window.addEventListener('popstate', handleLocationChange);
@@ -86,29 +82,18 @@ function App() {
     };
   }, []);
 
-  // Switch between Subdomain (bouden-admin) and Main Site (boudenmotorsport)
-  const switchToAdminSubdomain = () => {
-    const search = new URLSearchParams(window.location.search);
-    search.set('subdomain', 'admin');
-    search.delete('blocked_admin');
-    const newUrl = `${window.location.pathname}?${search.toString()}`;
+  // Switch between Admin Portal and Main Site
+  const switchToAdminPortal = () => {
+    const newUrl = '/admin';
     window.history.pushState(null, '', newUrl);
-    setIsAdminSubdomain(true);
-    setIsBlockedAdminAttempt(false);
+    setIsAdminPortal(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const switchToMainSite = () => {
-    const search = new URLSearchParams(window.location.search);
-    search.delete('subdomain');
-    search.delete('domain');
-    search.delete('portal');
-    search.delete('blocked_admin');
-    const searchStr = search.toString();
-    const newUrl = `/${searchStr ? `?${searchStr}` : ''}`;
+    const newUrl = '/';
     window.history.pushState(null, '', newUrl);
-    setIsAdminSubdomain(false);
-    setIsBlockedAdminAttempt(false);
+    setIsAdminPortal(false);
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -128,9 +113,9 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ==================== 1. DEDICATED ADMIN SUBDOMAIN PORTAL ====================
-  // If the visitor is on the admin subdomain (bouden-admin.vercel.app or ?subdomain=admin)
-  if (isAdminSubdomain) {
+  // ==================== 1. DEDICATED ADMIN PORTAL ====================
+  // If the visitor is on the admin path or subdomain (/admin, ?subdomain=admin, etc.)
+  if (isAdminPortal) {
     return (
       <div className="min-h-screen bg-dark-900 text-white font-sans selection:bg-red-600 selection:text-white flex flex-col justify-between">
         <div>
@@ -139,7 +124,7 @@ function App() {
             <div className="flex items-center gap-2 text-red-200">
               <span className="w-2 h-2 rounded-full bg-brand-brightGreen animate-pulse"></span>
               <strong className="font-mono text-white">bouden-admin.vercel.app</strong>
-              <span className="hidden sm:inline text-gray-400">| النطاق الفرعي المستقل للوحة التحكم (Admin Subdomain)</span>
+              <span className="hidden sm:inline text-gray-400">| لوحة التحكم المركزية للأدمن (Admin Central Portal)</span>
             </div>
             <button
               onClick={switchToMainSite}
@@ -180,39 +165,7 @@ function App() {
         />
 
         <main>
-          {/* If visitor attempted to access /admin or #admin on the main site -> Show Access Restricted / Not Found */}
-          {isBlockedAdminAttempt ? (
-            <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-              <div className="bg-dark-800/90 border border-white/10 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-                <div className="w-16 h-16 rounded-2xl bg-brand-red/10 border border-brand-red/30 text-brand-red flex items-center justify-center mx-auto mb-6 shadow-lg shadow-brand-red/20">
-                  <ShieldAlert className="w-8 h-8" />
-                </div>
-
-                <span className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-wider inline-block mb-3">
-                  404 • الصفحة غير موجودة
-                </span>
-
-                <h1 className="text-2xl sm:text-3xl font-display font-black text-white mb-3">
-                  عذراً، هذه الصفحة غير متاحة للزوار
-                </h1>
-
-                <p className="text-gray-400 text-sm leading-relaxed mb-6 max-w-md mx-auto">
-                  الصفحة أو المسار المطلوب غير متوفر على الموقع العام. يرجى تصفح بطولات وسباقات موسم 2026 عبر الصفحة الرئيسية.
-                </p>
-
-                <button
-                  onClick={() => {
-                    setIsBlockedAdminAttempt(false);
-                    handleNavigate('home');
-                  }}
-                  className="px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white font-bold text-sm flex items-center justify-center gap-2 mx-auto transition-colors shadow-lg shadow-brand-red/30"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>العودة للصفحة الرئيسية (Home)</span>
-                </button>
-              </div>
-            </div>
-          ) : currentView === 'home' ? (
+          {currentView === 'home' ? (
             <>
               <Hero 
                 onExplore={() => {

@@ -22,7 +22,14 @@ import {
     Image as ImageIcon, UploadCloud, Layers, Palette, FolderCheck
 } from 'lucide-react';
 import { getTeamsForSeries } from '../services/teamData';
-import { getLocalMediaOverrides, saveMediaConfig, DEFAULT_MEDIA_CONFIG, fetchRemoteMediaConfig } from '../services/mediaService';
+import { 
+    getLocalMediaOverrides, 
+    saveMediaConfig, 
+    DEFAULT_MEDIA_CONFIG, 
+    fetchRemoteMediaConfig,
+    syncMediaWithServer,
+    resetMediaToDefaults
+} from '../services/mediaService';
 
 interface AdminPanelProps {
     onBackToSite?: () => void;
@@ -68,6 +75,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
     const [mediaSubTab, setMediaSubTab] = useState<'championships' | 'teams' | 'drivers' | 'hero'>('championships');
     const [mediaSeriesFilter, setMediaSeriesFilter] = useState<SeriesId>(SeriesId.F1);
     const [savingMedia, setSavingMedia] = useState<boolean>(false);
+    const [syncingMedia, setSyncingMedia] = useState<boolean>(false);
 
     // Bots Tab State
     const [botList, setBotList] = useState<any[]>([]);
@@ -307,13 +315,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
         }
     };
 
-    const handleResetMediaDefaults = () => {
-        if (window.confirm('هل تريد استعادة جميع صور وشعارات البطولات والفرق الافتراضية عالية الدقة؟')) {
-            const def = { ...DEFAULT_MEDIA_CONFIG };
-            setMediaOverrides(def);
-            saveMediaConfig(def).then(() => {
-                setStatusMessage({ type: 'info', text: 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة وتطبيقها فوراً' });
+    const handleRealtimeSync = async () => {
+        setSyncingMedia(true);
+        setStatusMessage(null);
+        try {
+            const res = await syncMediaWithServer();
+            setMediaOverrides(res.mediaConfig);
+            setStatusMessage({ 
+                type: 'success', 
+                text: res.message || 'تمت المزامنة الفورية بنجاح مع السيرفر السحابي وتحديث كافة الأجهزة والزوار!' 
             });
+        } catch (err: any) {
+            setStatusMessage({ type: 'error', text: err.message || 'فشلت المزامنة الفورية مع السيرفر' });
+        } finally {
+            setSyncingMedia(false);
+        }
+    };
+
+    const handleResetMediaDefaults = async () => {
+        if (window.confirm('هل تريد استعادة جميع صور وشعارات البطولات والفرق الافتراضية عالية الدقة ونشرها لكافة الزوار؟')) {
+            setSavingMedia(true);
+            try {
+                const res = await resetMediaToDefaults();
+                setMediaOverrides(res.mediaConfig);
+                setStatusMessage({ 
+                    type: 'info', 
+                    text: res.message || 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة وتطبيقها فوراً للجميع' 
+                });
+            } catch (err: any) {
+                setStatusMessage({ type: 'error', text: err.message || 'فشلت استعادة الافتراضي' });
+            } finally {
+                setSavingMedia(false);
+            }
         }
     };
 
@@ -533,7 +566,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                         </div>
 
                         {/* Helper credentials notice */}
-                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-300 space-y-1">
+                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-300 space-y-1.5">
                             <div className="flex justify-between items-center">
                                 <span>اسم المستخدم المطلوب:</span>
                                 <code className="bg-black/50 text-brand-brightGreen font-mono px-2 py-0.5 rounded font-bold">bouden</code>
@@ -542,6 +575,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                 <span>كلمة المرور المطلوبة:</span>
                                 <code className="bg-black/50 text-brand-brightGreen font-mono px-2 py-0.5 rounded font-bold">reda</code>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUsernameInput('bouden');
+                                    setPasswordInput('reda');
+                                }}
+                                className="w-full mt-2 py-2 px-3 rounded-lg bg-brand-red/10 hover:bg-brand-red/20 border border-brand-red/30 text-brand-brightGreen text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>تعبئة تلقائية للبيانات الرسمية (Auto-Fill: bouden / reda)</span>
+                            </button>
                         </div>
 
                         <button
@@ -1081,22 +1125,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
 
                             <div className="flex flex-wrap items-center gap-3 shrink-0">
                                 <button
-                                    onClick={handleResetMediaDefaults}
+                                    onClick={handleRealtimeSync}
+                                    disabled={syncingMedia}
                                     type="button"
-                                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold border border-white/10 transition-colors flex items-center gap-2"
-                                    title="استعادة الصور والشعارات الأصلية عالية الدقة"
+                                    className="px-4 py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white text-xs font-bold border border-blue-500/40 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/10 disabled:opacity-50 cursor-pointer"
+                                    title="مزامنة فورية مع السيرفر السحابي وتحديث كافة الأجهزة والزوار"
+                                >
+                                    <Radio className={`w-4 h-4 text-blue-400 ${syncingMedia ? 'animate-spin' : 'animate-pulse'}`} />
+                                    <span>{syncingMedia ? 'جاري المزامنة...' : 'مزامنة فورية Real-time Sync'}</span>
+                                </button>
+
+                                <button
+                                    onClick={handleResetMediaDefaults}
+                                    disabled={savingMedia || syncingMedia}
+                                    type="button"
+                                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold border border-white/10 transition-colors flex items-center gap-2 cursor-pointer"
+                                    title="استعادة الصور والشعارات الأصلية عالية الدقة لكافة البطولات والفرق"
                                 >
                                     <RefreshCw className="w-4 h-4 text-gray-400" />
-                                    <span>استعادة الافتراضي</span>
+                                    <span>استعادة الافتراضي Reset Defaults</span>
                                 </button>
 
                                 <button
                                     onClick={handleSaveMedia}
-                                    disabled={savingMedia}
-                                    className="px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white text-sm font-bold shadow-lg shadow-brand-red/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                                    disabled={savingMedia || syncingMedia}
+                                    className="px-6 py-3 rounded-xl bg-brand-red hover:bg-red-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-brand-red/30 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                                 >
                                     {savingMedia ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    <span>حفظ وتطبيق التعديلات فوراً</span>
+                                    <span>حفظ وتطبيق التعديلات سحابياً</span>
                                 </button>
                             </div>
                         </div>
@@ -1603,6 +1659,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                 </div>
                             </div>
                         )}
+
+                        {/* Bottom Sticky Action Bar */}
+                        <div className="sticky bottom-4 z-20 bg-dark-800/95 backdrop-blur-md border border-white/15 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-2.5">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-brightGreen opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-brightGreen"></span>
+                                </span>
+                                <div>
+                                    <p className="text-xs font-bold text-white">المزامنة التلقائية الحية نشطة (Active Cloud Auto-Sync)</p>
+                                    <p className="text-[11px] text-gray-400">أي تعديل يتم حفظه وتوزيعه فوراً على كافة شاشات وأجهزة الزوار</p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={handleRealtimeSync}
+                                    disabled={syncingMedia}
+                                    type="button"
+                                    className="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white text-xs font-bold border border-blue-500/40 transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                                    title="مزامنة فورية الآن مع السيرفر"
+                                >
+                                    <Radio className={`w-3.5 h-3.5 text-blue-400 ${syncingMedia ? 'animate-spin' : 'animate-pulse'}`} />
+                                    <span>{syncingMedia ? 'جاري المزامنة...' : 'مزامنة فورية Real-time Sync'}</span>
+                                </button>
+
+                                <button
+                                    onClick={handleResetMediaDefaults}
+                                    disabled={savingMedia || syncingMedia}
+                                    type="button"
+                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold border border-white/10 transition-colors flex items-center gap-2 cursor-pointer"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
+                                    <span>استعادة الافتراضي Reset Defaults</span>
+                                </button>
+
+                                <button
+                                    onClick={handleSaveMedia}
+                                    disabled={savingMedia || syncingMedia}
+                                    className="px-5 py-2.5 rounded-xl bg-brand-red hover:bg-red-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-brand-red/30 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {savingMedia ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                    <span>حفظ وتطبيق التعديلات سحابياً</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
