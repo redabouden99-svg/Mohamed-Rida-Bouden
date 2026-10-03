@@ -30,6 +30,15 @@ import {
     syncMediaWithServer,
     resetMediaToDefaults
 } from '../services/mediaService';
+import { 
+    getCloudConfig, 
+    saveCloudConfig, 
+    testCloudConnection, 
+    generateSyncUrl, 
+    pushToCloudDatabase,
+    CloudDbConfig,
+    OFFICIAL_URL 
+} from '../services/cloudSyncService';
 
 interface AdminPanelProps {
     onBackToSite?: () => void;
@@ -72,10 +81,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
 
     // Media Manager State
     const [mediaOverrides, setMediaOverrides] = useState<MediaOverrides>(getLocalMediaOverrides);
-    const [mediaSubTab, setMediaSubTab] = useState<'championships' | 'teams' | 'drivers' | 'hero'>('championships');
+    const [mediaSubTab, setMediaSubTab] = useState<'championships' | 'teams' | 'drivers' | 'hero' | 'cloud'>('championships');
     const [mediaSeriesFilter, setMediaSeriesFilter] = useState<SeriesId>(SeriesId.F1);
     const [savingMedia, setSavingMedia] = useState<boolean>(false);
     const [syncingMedia, setSyncingMedia] = useState<boolean>(false);
+
+    // Live Cloud Database & Sync State
+    const [cloudConfig, setCloudConfig] = useState<CloudDbConfig>(getCloudConfig);
+    const [testingCloud, setTestingCloud] = useState<boolean>(false);
+    const [cloudTestResult, setCloudTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+    const [savingCloud, setSavingCloud] = useState<boolean>(false);
+    const [syncUrlCopied, setSyncUrlCopied] = useState<boolean>(false);
 
     // Bots Tab State
     const [botList, setBotList] = useState<any[]>([]);
@@ -348,6 +364,138 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                 setSavingMedia(false);
             }
         }
+    };
+
+    const handleOpenAndSyncLiveSite = async () => {
+        setSyncingMedia(true);
+        setStatusMessage(null);
+        try {
+            // 1. Ensure current media is saved locally and pushed to cloud
+            await saveMediaConfig(mediaOverrides);
+
+            // 2. Generate live sync URL with compressed payload
+            const syncUrl = generateSyncUrl(mediaOverrides, adminConfig?.siteContent);
+
+            // 3. Open official site in a new tab
+            window.open(syncUrl, '_blank');
+
+            // 4. Also copy to clipboard
+            try {
+                await navigator.clipboard.writeText(syncUrl);
+                setSyncUrlCopied(true);
+                setTimeout(() => setSyncUrlCopied(false), 4000);
+            } catch {}
+
+            setStatusMessage({
+                type: 'success',
+                text: '🚀 تم فتح الموقع الرسمي https://boudenmotorsport.vercel.app/ وتطبيق كافة التعديلات والصور فوراً بنجاح!'
+            });
+        } catch (err: any) {
+            setStatusMessage({ type: 'error', text: err.message || 'فشلت المزامنة المباشرة' });
+        } finally {
+            setSyncingMedia(false);
+        }
+    };
+
+    const handleCopySyncUrl = async () => {
+        try {
+            const syncUrl = generateSyncUrl(mediaOverrides, adminConfig?.siteContent);
+            await navigator.clipboard.writeText(syncUrl);
+            setSyncUrlCopied(true);
+            setTimeout(() => setSyncUrlCopied(false), 4000);
+            setStatusMessage({
+                type: 'info',
+                text: '📋 تم نسخ رابط المزامنة الفوري المباشر للحافظة! يمكنك فتحه في أي جهاز لتحديثه بضغطة واحدة.'
+            });
+        } catch {
+            setStatusMessage({ type: 'error', text: 'تعذر نسخ الرابط إلى الحافظة' });
+        }
+    };
+
+    const handleTestCloudConnection = async () => {
+        setTestingCloud(true);
+        setCloudTestResult(null);
+        try {
+            const res = await testCloudConnection(cloudConfig);
+            setCloudTestResult(res);
+            if (res.success) {
+                setStatusMessage({ type: 'success', text: res.message });
+            } else {
+                setStatusMessage({ type: 'error', text: res.message });
+            }
+        } catch (e: any) {
+            setCloudTestResult({ success: false, message: e.message || 'فشل الاتصال' });
+            setStatusMessage({ type: 'error', text: e.message || 'فشل الاتصال' });
+        } finally {
+            setTestingCloud(false);
+        }
+    };
+
+    const handleSaveCloudConfig = async () => {
+        setSavingCloud(true);
+        try {
+            const saved = saveCloudConfig(cloudConfig);
+            setCloudConfig(saved);
+            // Push current overrides immediately to new cloud db
+            await pushToCloudDatabase({ media: mediaOverrides, content: adminConfig?.siteContent });
+            const test = await testCloudConnection(saved);
+            setCloudTestResult(test);
+            setStatusMessage({
+                type: 'success',
+                text: '✅ تم حفظ إعدادات السحابة بنجاح ومزامنة كافة الصور والمحتوى فوراً!'
+            });
+        } catch (e: any) {
+            setStatusMessage({ type: 'error', text: 'فشل حفظ الإعدادات: ' + e.message });
+        } finally {
+            setSavingCloud(false);
+        }
+    };
+
+    const handleExportBackupJson = () => {
+        try {
+            const backupData = {
+                version: "2026.1",
+                exportedAt: new Date().toISOString(),
+                mediaOverrides,
+                siteContent: adminConfig?.siteContent
+            };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bouden_motorsport_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setStatusMessage({ type: 'success', text: 'تم تصدير ملف النسخة الاحتياطية بنجاح!' });
+        } catch (e: any) {
+            setStatusMessage({ type: 'error', text: 'فشل تصدير البيانات: ' + e.message });
+        }
+    };
+
+    const handleImportBackupJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const text = event.target?.result as string;
+                const parsed = JSON.parse(text);
+                if (parsed.mediaOverrides) {
+                    setMediaOverrides(parsed.mediaOverrides);
+                    await saveMediaConfig(parsed.mediaOverrides);
+                }
+                if (parsed.siteContent) {
+                    await updateSiteContent(parsed.siteContent);
+                    if (onContentUpdated) onContentUpdated(parsed.siteContent);
+                }
+                setStatusMessage({ type: 'success', text: 'تم استيراد وتطبيق النسخة الاحتياطية بنجاح ونشرها للموقع فوراً!' });
+            } catch (err: any) {
+                setStatusMessage({ type: 'error', text: 'فشل قراءة ملف النسخة الاحتياطية: ' + err.message });
+            }
+        };
+        reader.readAsText(file);
     };
 
     const handleAddArticle = () => {
@@ -1125,6 +1273,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
 
                             <div className="flex flex-wrap items-center gap-3 shrink-0">
                                 <button
+                                    onClick={handleOpenAndSyncLiveSite}
+                                    type="button"
+                                    className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer"
+                                    title="فتح وتطبيق فوري على الموقع الرسمي https://boudenmotorsport.vercel.app/"
+                                >
+                                    <ExternalLink className="w-4 h-4 text-emerald-100" />
+                                    <span>تطبيق فوري على الموقع الرسمي (Sync Live Site)</span>
+                                </button>
+
+                                <button
+                                    onClick={handleCopySyncUrl}
+                                    type="button"
+                                    className="px-3.5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 hover:text-white text-xs font-bold border border-cyan-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                    title="نسخ رابط المزامنة الفورية لمشاركته أو فتحه في أي جهاز"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    <span>{syncUrlCopied ? 'تم النسخ! ✓' : 'نسخ رابط المزامنة'}</span>
+                                </button>
+
+                                <button
                                     onClick={handleRealtimeSync}
                                     disabled={syncingMedia}
                                     type="button"
@@ -1205,6 +1373,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                             >
                                 <ImageIcon className="w-4 h-4" />
                                 <span>صورة الـ Hero Section الرئيسية</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMediaSubTab('cloud')}
+                                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+                                    mediaSubTab === 'cloud'
+                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                                        : 'text-cyan-400 hover:text-white hover:bg-white/5'
+                                }`}
+                            >
+                                <Database className="w-4 h-4 text-cyan-300" />
+                                <span>الربط السحابي وقاعدة البيانات (Cloud DB)</span>
+                                <span className="w-2 h-2 rounded-full bg-brand-brightGreen animate-pulse"></span>
                             </button>
                         </div>
 
@@ -1660,6 +1841,253 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                             </div>
                         )}
 
+                        {/* SUB-TAB 5: CLOUD DATABASE & CROSS-DOMAIN LINK */}
+                        {mediaSubTab === 'cloud' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                {/* Top Status & Explanation Card */}
+                                <div className="bg-gradient-to-br from-blue-950/40 via-dark-800 to-dark-850 border border-blue-500/30 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl">
+                                    <div className="flex flex-wrap items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                                                <Database className="w-6 h-6 animate-pulse" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                                                    <span>نظام الربط السحابي وقاعدة البيانات الحية (Live Cloud Link)</span>
+                                                </h3>
+                                                <p className="text-xs text-blue-300">
+                                                    ربط لوحة التحكم (bouden-admin.vercel.app) بالموقع الرسمي (boudenmotorsport.vercel.app)
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold font-mono">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                            <span>نظام المزامنة التلقائية: نشط وجاهز</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-dark-900/80 border border-white/10 rounded-xl p-4 text-xs text-gray-300 space-y-2">
+                                        <p className="font-bold text-white flex items-center gap-1.5">
+                                            <Sparkles className="w-4 h-4 text-amber-400" />
+                                            <span>كيف يتم تطبيق التعديلات فوراً على الموقع الرسمي؟</span>
+                                        </p>
+                                        <p className="leading-relaxed">
+                                            تم تجهيز المنصة بنظام مزامنة متعدد الطبقات (Multi-Tier Cloud Sync Engine):
+                                        </p>
+                                        <ul className="list-disc list-inside space-y-1 text-gray-400">
+                                            <li><strong className="text-white">المزامنة الفورية بضغطة زر:</strong> زر "تطبيق فوري على الموقع الرسمي" يقوم بحقن ومزامنة وتحديث كافة الصور والمحتوى في ثانية واحدة.</li>
+                                            <li><strong className="text-white">قاعدة البيانات السحابية الحية (Supabase / KV):</strong> عند حفظ أي صورة أو شعار، يتم رفعها وحفظها سحابياً لتعمل تلقائياً لدى جميع زوار وأجهزة المنصة حول العالم دون الحاجة لتعديل الكود المصدري.</li>
+                                            <li><strong className="text-white">الجسر التبادلي (Cross-Domain Bridge):</strong> ينقل البيانات مباشرة بين النطاقين عبر المتصفح.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                {/* Instant Action Launchers */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* Action 1: One-Click Sync & Open */}
+                                    <div className="bg-dark-800 border border-emerald-500/30 rounded-2xl p-6 space-y-4 shadow-lg hover:border-emerald-500/60 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                                                <ExternalLink className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-white text-base">فتح وتطبيق فوري على الموقع الرسمي</h4>
+                                                <span className="text-[11px] text-gray-400">تطبيق كافة الصور والشعارات والتعديلات فوراً بضغطة واحدة</span>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-gray-300 leading-relaxed">
+                                            يولد هذا الزر رابط تحديث مباشر مشفراً يحمل كافة تعديلاتك ويفتح الموقع الرسمي في نافذة جديدة ليتم تطبيقها فوراً دون أي انتظار.
+                                        </p>
+
+                                        <div className="flex flex-wrap items-center gap-2 pt-2">
+                                            <button
+                                                onClick={handleOpenAndSyncLiveSite}
+                                                type="button"
+                                                className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer"
+                                            >
+                                                <ExternalLink className="w-4 h-4 text-emerald-100" />
+                                                <span>فتح الموقع ومزامنته الآن (Launch & Sync)</span>
+                                            </button>
+
+                                            <button
+                                                onClick={handleCopySyncUrl}
+                                                type="button"
+                                                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 hover:text-white text-xs font-bold border border-cyan-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                                <span>{syncUrlCopied ? 'تم النسخ بنجاح! ✓' : 'نسخ رابط التحديث'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Action 2: Cloud Sync & Defaults */}
+                                    <div className="bg-dark-800 border border-blue-500/30 rounded-2xl p-6 space-y-4 shadow-lg hover:border-blue-500/60 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                                                <Radio className="w-5 h-5 text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-white text-base">المزامنة السحابية وإعادة الضبط</h4>
+                                                <span className="text-[11px] text-gray-400">نشر التعديلات سحابياً أو استعادة الصور الأصلية</span>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-gray-300 leading-relaxed">
+                                            قم بمزامنة فورية لسيرفر السحابة لتحديث الأجهزة المتصلة، أو استعد الصور والشعارات الافتراضية عالية الدقة لكافة البطولات والفرق.
+                                        </p>
+
+                                        <div className="flex flex-wrap items-center gap-2 pt-2">
+                                            <button
+                                                onClick={handleRealtimeSync}
+                                                disabled={syncingMedia}
+                                                type="button"
+                                                className="px-4 py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white text-xs font-bold border border-blue-500/40 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                <Radio className={`w-4 h-4 text-blue-400 ${syncingMedia ? 'animate-spin' : 'animate-pulse'}`} />
+                                                <span>{syncingMedia ? 'جاري المزامنة...' : 'مزامنة فورية Real-time Sync'}</span>
+                                            </button>
+
+                                            <button
+                                                onClick={handleResetMediaDefaults}
+                                                disabled={savingMedia || syncingMedia}
+                                                type="button"
+                                                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold border border-white/10 transition-colors flex items-center gap-2 cursor-pointer"
+                                            >
+                                                <RefreshCw className="w-4 h-4 text-gray-400" />
+                                                <span>استعادة الافتراضي Reset Defaults</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Persistent Cloud Database (Supabase) Setup Form */}
+                                <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+                                        <div>
+                                            <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                                                <Database className="w-5 h-5 text-cyan-400" />
+                                                <span>إعدادات قاعدة بيانات Supabase السحابية (Persistent Cloud DB)</span>
+                                            </h4>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                تخزين واسترجاع الصور والمحتوى من قاعدة بيانات Supabase حية دائمة
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            onClick={handleTestCloudConnection}
+                                            disabled={testingCloud}
+                                            type="button"
+                                            className="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 transition-all flex items-center gap-2 cursor-pointer"
+                                        >
+                                            {testingCloud ? <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" /> : <Sparkles className="w-4 h-4 text-cyan-400" />}
+                                            <span>فحص الاتصال السحابي (Test Ping)</span>
+                                        </button>
+                                    </div>
+
+                                    {cloudTestResult && (
+                                        <div className={`p-4 rounded-xl border text-xs flex items-center gap-3 ${
+                                            cloudTestResult.success 
+                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                                                : 'bg-red-500/10 border-red-500/30 text-red-300'
+                                        }`}>
+                                            {cloudTestResult.success ? (
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                            ) : (
+                                                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                                            )}
+                                            <span>{cloudTestResult.message}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-gray-300">
+                                                رابط مشروع Supabase السحابي (Supabase Project URL):
+                                            </label>
+                                            <input 
+                                                type="text"
+                                                value={cloudConfig.supabaseUrl}
+                                                onChange={(e) => setCloudConfig(prev => ({ ...prev, supabaseUrl: e.target.value }))}
+                                                placeholder="https://xyzproject.supabase.co"
+                                                className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                            />
+                                            <span className="text-[10px] text-gray-400 block">
+                                                من لوحة تحكم Supabase ← Project Settings ← API ← Project URL
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-gray-300">
+                                                مفتاح الوصول العام (Anon Public Key):
+                                            </label>
+                                            <input 
+                                                type="password"
+                                                value={cloudConfig.supabaseAnonKey}
+                                                onChange={(e) => setCloudConfig(prev => ({ ...prev, supabaseAnonKey: e.target.value }))}
+                                                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                                className="w-full bg-dark-900 border border-white/15 rounded-xl px-4 py-3 text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                            />
+                                            <span className="text-[10px] text-gray-400 block">
+                                                من لوحة تحكم Supabase ← Project Settings ← API ← anon public
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/10">
+                                        <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-brand-brightGreen"></span>
+                                            <span>يتم إنشاء جدول <code>bms_settings</code> وحفظ <code>media_overrides</code> بداخله تلقائياً.</span>
+                                        </div>
+
+                                        <button
+                                            onClick={handleSaveCloudConfig}
+                                            disabled={savingCloud}
+                                            type="button"
+                                            className="px-6 py-2.5 rounded-xl bg-brand-red hover:bg-red-600 text-white text-xs font-bold shadow-lg shadow-brand-red/30 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                                        >
+                                            {savingCloud ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                            <span>حفظ إعدادات السحابة ومزامنة البيانات</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Backup & Restore Hub */}
+                                <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 space-y-4">
+                                    <h4 className="text-base font-display font-bold text-white flex items-center gap-2">
+                                        <FolderCheck className="w-4 h-4 text-amber-400" />
+                                        <span>تصدير واستيراد النسخ الاحتياطية (Backup & Migration JSON)</span>
+                                    </h4>
+                                    <p className="text-xs text-gray-400">
+                                        يمكنك تنزيل ملف JSON يحتوي على كافة الصور وشعارات الفرق ومحتوى الموقع الحالي ونقلها بين المتصفحات والأجهزة بضغطة زر.
+                                    </p>
+
+                                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                                        <button
+                                            onClick={handleExportBackupJson}
+                                            type="button"
+                                            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer"
+                                        >
+                                            <FileText className="w-4 h-4 text-cyan-400" />
+                                            <span>تصدير نسخة احتياطية (Export JSON)</span>
+                                        </button>
+
+                                        <label className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer">
+                                            <UploadCloud className="w-4 h-4 text-emerald-400" />
+                                            <span>استيراد وتطبيق ملف نسخة (Import JSON)</span>
+                                            <input 
+                                                type="file" 
+                                                accept=".json,application/json" 
+                                                className="hidden" 
+                                                onChange={handleImportBackupJson}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Bottom Sticky Action Bar */}
                         <div className="sticky bottom-4 z-20 bg-dark-800/95 backdrop-blur-md border border-white/15 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4">
                             <div className="flex items-center gap-2.5">
@@ -1669,11 +2097,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToSite, onContentUpdated 
                                 </span>
                                 <div>
                                     <p className="text-xs font-bold text-white">المزامنة التلقائية الحية نشطة (Active Cloud Auto-Sync)</p>
-                                    <p className="text-[11px] text-gray-400">أي تعديل يتم حفظه وتوزيعه فوراً على كافة شاشات وأجهزة الزوار</p>
+                                    <p className="text-[11px] text-gray-400">أي تعديل يتم حفظه وتوزيعه فوراً على كافة شاشات وأجهزة الزوار والموقع الرسمي</p>
                                 </div>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={handleOpenAndSyncLiveSite}
+                                    type="button"
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                                    title="فتح وتطبيق فوري على الموقع الرسمي"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>تطبيق فوري على الموقع الرسمي</span>
+                                </button>
+
                                 <button
                                     onClick={handleRealtimeSync}
                                     disabled={syncingMedia}

@@ -13,6 +13,8 @@ import { SeriesId, SiteContent } from './types';
 import { fetchSiteContent } from './services/adminService';
 import { getStoredUser, UserAccount } from './services/authService';
 import { initMediaRealtimeSync, fetchRemoteMediaConfig } from './services/mediaService';
+import { applySyncTokenFromUrl } from './services/cloudSyncService';
+import { initCrossDomainBridge } from './services/crossDomainBridge';
 import { Globe, Lock, Shield } from 'lucide-react';
 
 function App() {
@@ -49,14 +51,48 @@ function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
-  // Load dynamic site content & start real-time media server sync
+  // Load dynamic site content & start real-time cloud and cross-domain sync
   useEffect(() => {
+    // 1. Check if visiting via a live sync token (?bms_sync=...)
+    applySyncTokenFromUrl();
+
+    // 2. Initialize cross-domain bridge listener
+    initCrossDomainBridge(
+      (freshMedia) => {
+        // Handled automatically via local storage and listeners
+      },
+      (freshContent) => {
+        if (freshContent) setSiteContent(freshContent);
+      }
+    );
+
+    // 3. Initial load of content and media
     fetchSiteContent().then(content => {
       if (content) setSiteContent(content);
     });
-    // Automatic live sync across all devices & visitors
     initMediaRealtimeSync();
     fetchRemoteMediaConfig();
+
+    // 4. Background cloud sync check every 15 seconds (keeps visitors updated live)
+    const syncInterval = setInterval(() => {
+      fetchRemoteMediaConfig().catch(() => {});
+      fetchSiteContent().then(c => {
+        if (c) setSiteContent(c);
+      }).catch(() => {});
+    }, 15000);
+
+    // 5. Listen for content updates triggered locally or via bridge
+    const handleContentUpdated = (e: any) => {
+      if (e.detail?.content) {
+        setSiteContent(e.detail.content);
+      }
+    };
+    window.addEventListener('bms_content_updated', handleContentUpdated);
+
+    return () => {
+      clearInterval(syncInterval);
+      window.removeEventListener('bms_content_updated', handleContentUpdated);
+    };
   }, []);
 
   // Sync user state on storage/event changes

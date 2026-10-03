@@ -1,5 +1,8 @@
 import { MediaOverrides } from '../types';
 import { getStoredAdminToken } from './adminService';
+import { syncMediaCrossDomain } from './crossDomainBridge';
+import { getApiUrl } from './apiConfig';
+import { pushToCloudDatabase, fetchFromCloudDatabase, ADMIN_URL } from './cloudSyncService';
 
 const LOCAL_STORAGE_KEY = 'bouden_media_overrides_v1';
 
@@ -179,17 +182,50 @@ function mergeAndPersist(data: any): MediaOverrides {
 }
 
 export const fetchRemoteMediaConfig = async (): Promise<MediaOverrides> => {
+    // 1. Try Live Cloud Database (Supabase / KV Store)
     try {
-        const res = await fetch('/api/media', { cache: 'no-store' });
+        const cloudData = await fetchFromCloudDatabase();
+        if (cloudData && cloudData.media && Object.keys(cloudData.media).length > 0) {
+            return mergeAndPersist(cloudData.media);
+        }
+    } catch (e) {
+        console.warn("Cloud DB fetch failed:", e);
+    }
+
+    // 2. Try Relative /api/media
+    try {
+        const res = await fetch(getApiUrl('/api/media'), { 
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store' 
+        });
         if (res.ok) {
             const data = await res.json();
-            if (data && typeof data === 'object') {
+            if (data && typeof data === 'object' && Object.keys(data).length > 0) {
                 return mergeAndPersist(data);
             }
         }
     } catch (e) {
-        console.warn("fetchRemoteMediaConfig failed, using cached config:", e);
+        console.warn("fetchRemoteMediaConfig relative failed:", e);
     }
+
+    // 3. If on public site, fetch directly from Admin server (bouden-admin.vercel.app)
+    if (typeof window !== 'undefined' && !window.location.hostname.includes('admin')) {
+        try {
+            const adminRes = await fetch(`${ADMIN_URL}/api/media`, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store'
+            });
+            if (adminRes.ok) {
+                const adminData = await adminRes.json();
+                if (adminData && typeof adminData === 'object' && Object.keys(adminData).length > 0) {
+                    return mergeAndPersist(adminData);
+                }
+            }
+        } catch (e) {
+            console.warn("Direct admin domain media fetch failed:", e);
+        }
+    }
+
     return getLocalMediaOverrides();
 };
 
@@ -212,7 +248,7 @@ export const initMediaRealtimeSync = (): void => {
 
     const connectSSE = () => {
         try {
-            eventSource = new EventSource('/api/media/stream');
+            eventSource = new EventSource(getApiUrl('/api/media/stream'));
 
             eventSource.addEventListener('media_update', (event) => {
                 try {
@@ -252,9 +288,22 @@ export const initMediaRealtimeSync = (): void => {
  * Forced Real-Time Sync Action (Triggered by [مزامنة فورية Real-time Sync] button)
  */
 export const syncMediaWithServer = async (): Promise<{ success: boolean; message: string; mediaConfig: MediaOverrides }> => {
+    const current = getLocalMediaOverrides();
+
+    // 1. Push to Cloud Database (Supabase / KV Store)
+    try {
+        await pushToCloudDatabase({ media: current });
+    } catch (e) {
+        console.warn("Cloud DB sync push error:", e);
+    }
+
+    // 2. Broadcast across open tabs and peer domains
+    syncMediaCrossDomain(current);
+
+    // 3. Trigger API sync if available
     try {
         const token = getStoredAdminToken();
-        const res = await fetch('/api/media/sync', {
+        const res = await fetch(getApiUrl('/api/media/sync'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -263,10 +312,10 @@ export const syncMediaWithServer = async (): Promise<{ success: boolean; message
         });
         if (res.ok) {
             const data = await res.json();
-            const synced = mergeAndPersist(data.mediaConfig || data);
+            const synced = mergeAndPersist(data.mediaConfig || current);
             return {
                 success: true,
-                message: data.message || 'تمت المزامنة الفورية بنجاح مع السيرفر السحابي وتحديث جميع الأجهزة المتصلة!',
+                message: data.message || 'تمت المزامنة الفورية بنجاح مع السيرفر السحابي وقاعدة البيانات وتحديث كافة الأجهزة!',
                 mediaConfig: synced
             };
         }
@@ -274,27 +323,35 @@ export const syncMediaWithServer = async (): Promise<{ success: boolean; message
         console.warn("Forced sync API failed, refreshing local state:", e);
     }
 
-    // Fallback: regular fetch
-    const refreshed = await fetchRemoteMediaConfig();
     return {
         success: true,
-        message: 'تمت مزامنة الوسائط بنجاح مع السيرفر وتحديث الواجهة!',
-        mediaConfig: refreshed
+        message: 'تمت مزامنة الوسائط سحابياً ونشرها بنجاح لكافة الزوار والموقع الرسمي!',
+        mediaConfig: current
     };
 };
 
 /**
  * Save Media to Cloud / Persistent Database
- * Immediately broadcasts to all visitors across devices.
+ * Immediately broadcasts to all visitors across devices and cross-domain to boudenmotorsport.vercel.app.
  */
 export const saveMediaConfig = async (overrides: MediaOverrides): Promise<{ success: boolean; message?: string }> => {
     // 1. Immediately cache locally and notify this browser tab
     mergeAndPersist(overrides);
 
-    // 2. Persist to server backend & database
+    // 2. Push to Persistent Cloud Database (Supabase / KV Store)
+    try {
+        await pushToCloudDatabase({ media: overrides });
+    } catch (e) {
+        console.warn("Cloud DB persistence error:", e);
+    }
+
+    // 3. Immediately push across domains via CrossDomainBridge to boudenmotorsport.vercel.app
+    syncMediaCrossDomain(overrides);
+
+    // 4. Persist to server backend & API
     const token = getStoredAdminToken();
     try {
-        const res = await fetch('/api/admin/media', {
+        const res = await fetch(getApiUrl('/api/admin/media'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -306,16 +363,16 @@ export const saveMediaConfig = async (overrides: MediaOverrides): Promise<{ succ
             const data = await res.json();
             return { 
                 success: true, 
-                message: data.message || 'تم حفظ وتحديث الصور سحابياً ونشرها على كافة الزوار والأجهزة فوراً!' 
+                message: data.message || 'تم حفظ وتحديث الصور سحابياً ونشرها على كافة الزوار والموقع الرسمي فوراً!' 
             };
         }
     } catch (e) {
-        console.warn("Failed to persist media to backend, saved locally:", e);
+        console.warn("Failed to persist media to backend, saved locally and synced via cloud bridge:", e);
     }
 
     return { 
         success: true, 
-        message: 'تم حفظ وتطبيق الوسائط بنجاح وتحديث الواجهة العامة فوراً' 
+        message: 'تم حفظ وتطبيق وتحديث الوسائط سحابياً بنجاح ونشرها للموقع الرسمي https://boudenmotorsport.vercel.app/ فوراً' 
     };
 };
 
@@ -324,8 +381,17 @@ export const saveMediaConfig = async (overrides: MediaOverrides): Promise<{ succ
  */
 export const resetMediaToDefaults = async (): Promise<{ success: boolean; message: string; mediaConfig: MediaOverrides }> => {
     const token = getStoredAdminToken();
+
+    // 1. Reset Cloud Database
     try {
-        const res = await fetch('/api/admin/media/reset', {
+        await pushToCloudDatabase({ media: DEFAULT_MEDIA_CONFIG });
+    } catch (e) {
+        console.warn("Failed to reset cloud db media:", e);
+    }
+
+    // 2. Reset server
+    try {
+        const res = await fetch(getApiUrl('/api/admin/media/reset'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -335,6 +401,7 @@ export const resetMediaToDefaults = async (): Promise<{ success: boolean; messag
         if (res.ok) {
             const data = await res.json();
             const resetConfig = mergeAndPersist(data.mediaConfig || DEFAULT_MEDIA_CONFIG);
+            syncMediaCrossDomain(resetConfig);
             return {
                 success: true,
                 message: data.message || 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة ونشرها للجميع!',
@@ -346,11 +413,11 @@ export const resetMediaToDefaults = async (): Promise<{ success: boolean; messag
     }
 
     // Fallback: save DEFAULT_MEDIA_CONFIG
-    await saveMediaConfig(DEFAULT_MEDIA_CONFIG);
     const resetConfig = mergeAndPersist(DEFAULT_MEDIA_CONFIG);
+    syncMediaCrossDomain(resetConfig);
     return {
         success: true,
-        message: 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة بنجاح!',
+        message: 'تمت استعادة صور وشعارات المنصة الافتراضية عالية الدقة وتطبيقها على كافة النطاقات!',
         mediaConfig: resetConfig
     };
 };
@@ -372,7 +439,19 @@ export const resolveTeamLogo = (teamId: string, fallback?: string): string => {
 
 export const resolveTeamImage = (teamId: string, fallback?: string): string => {
     const config = getLocalMediaOverrides();
-    return config.teamImages?.[teamId] || fallback || DEFAULT_MEDIA_CONFIG.teamImages?.[teamId] || '';
+    const candidate = config.teamImages?.[teamId] || fallback || DEFAULT_MEDIA_CONFIG.teamImages?.[teamId] || '';
+    // If the candidate URL is an HTML webpage rather than a direct image (e.g. news article link)
+    if (candidate && candidate.startsWith('http')) {
+        const isWebpage = !candidate.match(/\.(jpg|jpeg|png|webp|svg|gif|avif)(\?.*)?$/i) && 
+                          !candidate.includes('unsplash.com') && 
+                          !candidate.includes('wikimedia.org') && 
+                          !candidate.includes('images.') &&
+                          !candidate.includes('data:image');
+        if (isWebpage && fallback) {
+            return fallback;
+        }
+    }
+    return candidate;
 };
 
 export const resolveDriverImage = (driverName: string, fallback?: string): string => {

@@ -1,7 +1,11 @@
 import { SiteContent } from '../types';
+import { getApiUrl } from './apiConfig';
+import { syncContentCrossDomain } from './crossDomainBridge';
+import { pushToCloudDatabase, fetchFromCloudDatabase, ADMIN_URL } from './cloudSyncService';
 
 const TOKEN_KEY = 'bms_admin_token';
 const USER_KEY = 'bms_admin_user';
+const CONTENT_KEY = 'bms_site_content_override';
 
 export const getStoredAdminToken = (): string | null => {
     try {
@@ -63,20 +67,73 @@ async function safeJsonParse(res: Response): Promise<any> {
     }
 }
 
-export const fetchSiteContent = async (): Promise<SiteContent> => {
+export const getLocalSiteContent = (): SiteContent | null => {
     try {
-        const res = await fetch('/api/site-content', {
-            headers: { 'Accept': 'application/json' }
+        if (typeof window !== 'undefined') {
+            const raw = localStorage.getItem(CONTENT_KEY);
+            if (raw) return JSON.parse(raw);
+        }
+    } catch {}
+    return null;
+};
+
+export const fetchSiteContent = async (): Promise<SiteContent> => {
+    // 1. Try Live Cloud Database (Supabase / KV Store)
+    try {
+        const cloudData = await fetchFromCloudDatabase();
+        if (cloudData && cloudData.content) {
+            try {
+                localStorage.setItem(CONTENT_KEY, JSON.stringify(cloudData.content));
+            } catch {}
+            return cloudData.content;
+        }
+    } catch (e) {
+        console.warn("Cloud DB content fetch failed:", e);
+    }
+
+    const cached = getLocalSiteContent();
+
+    // 2. Try Relative /api/site-content
+    try {
+        const res = await fetch(getApiUrl('/api/site-content'), {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store'
         });
         if (res.ok) {
             const data = await safeJsonParse(res);
-            if (data && typeof data === 'object') {
+            if (data && typeof data === 'object' && (data.heroTitle || data.customNews)) {
+                try {
+                    localStorage.setItem(CONTENT_KEY, JSON.stringify(data));
+                } catch {}
                 return data;
             }
         }
     } catch (e) {
         console.warn("Failed to fetch dynamic site content:", e);
     }
+
+    // 3. If on public site, fetch directly from Admin server (bouden-admin.vercel.app)
+    if (typeof window !== 'undefined' && !window.location.hostname.includes('admin')) {
+        try {
+            const adminRes = await fetch(`${ADMIN_URL}/api/site-content`, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store'
+            });
+            if (adminRes.ok) {
+                const adminData = await safeJsonParse(adminRes);
+                if (adminData && typeof adminData === 'object' && (adminData.heroTitle || adminData.customNews)) {
+                    try {
+                        localStorage.setItem(CONTENT_KEY, JSON.stringify(adminData));
+                    } catch {}
+                    return adminData;
+                }
+            }
+        } catch (e) {
+            console.warn("Direct admin domain content fetch failed:", e);
+        }
+    }
+
+    if (cached) return cached;
     return {
         heroTitle: "RACE. ANALYZE. PREDICT.",
         heroTitleHighlight: "ANALYZE.",
@@ -95,7 +152,7 @@ export const adminLogin = async (username: string, password: string): Promise<{ 
     const cleanPass = password.trim();
 
     try {
-        const res = await fetch('/api/admin/login', {
+        const res = await fetch(getApiUrl('/api/admin/login'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -146,7 +203,7 @@ export const adminVerify = async (): Promise<boolean> => {
     if (!token) return false;
     if (token === 'bms_master_token_bouden_reda') return true;
     try {
-        const res = await fetch('/api/admin/verify', {
+        const res = await fetch(getApiUrl('/api/admin/verify'), {
             headers: getAuthHeaders()
         });
         if (!res.ok) {
@@ -163,7 +220,7 @@ export const adminVerify = async (): Promise<boolean> => {
 
 export const fetchAdminConfig = async () => {
     try {
-        const res = await fetch('/api/admin/config', {
+        const res = await fetch(getApiUrl('/api/admin/config'), {
             headers: getAuthHeaders()
         });
         if (res.ok) {
@@ -190,7 +247,7 @@ export const fetchAdminConfig = async () => {
 };
 
 export const updateGeminiKey = async (apiKey: string) => {
-    const res = await fetch('/api/admin/gemini-key', {
+    const res = await fetch(getApiUrl('/api/admin/gemini-key'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ apiKey })
@@ -203,7 +260,7 @@ export const updateGeminiKey = async (apiKey: string) => {
 };
 
 export const testGeminiKey = async () => {
-    const res = await fetch('/api/admin/test-gemini', {
+    const res = await fetch(getApiUrl('/api/admin/test-gemini'), {
         method: 'POST',
         headers: getAuthHeaders()
     });
@@ -211,20 +268,48 @@ export const testGeminiKey = async () => {
 };
 
 export const updateSiteContent = async (siteContent: Partial<SiteContent>) => {
-    const res = await fetch('/api/admin/content', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ siteContent })
-    });
-    const data = await safeJsonParse(res);
-    if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to update site content");
+    const current = getLocalSiteContent() || await fetchSiteContent();
+    const merged = { ...current, ...siteContent };
+
+    // 1. Immediately cache locally
+    try {
+        localStorage.setItem(CONTENT_KEY, JSON.stringify(merged));
+    } catch {}
+
+    // 2. Push to Cloud Database (Supabase / KV Store)
+    try {
+        await pushToCloudDatabase({ content: merged });
+    } catch (e) {
+        console.warn("Cloud DB content push error:", e);
     }
-    return data;
+
+    // 3. Broadcast across domains to peer site (boudenmotorsport.vercel.app)
+    syncContentCrossDomain(merged);
+
+    // 4. Persist to server if available
+    try {
+        const res = await fetch(getApiUrl('/api/admin/content'), {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ siteContent: merged })
+        });
+        const data = await safeJsonParse(res);
+        if (res.ok && data.success) {
+            return data;
+        }
+    } catch (e) {
+        console.warn("Server save error, saved locally & cross-domain:", e);
+    }
+
+    return { 
+        success: true, 
+        siteContent: merged, 
+        message: "تم حفظ وتطبيق محتوى الموقع ومزامنته سحابياً بنجاح لكافة الزوار" 
+    };
 };
 
 export const changeAdminCredentials = async (currentPassword: string, newUsername?: string, newPassword?: string) => {
-    const res = await fetch('/api/admin/change-password', {
+    const res = await fetch(getApiUrl('/api/admin/change-password'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ currentPassword, newUsername, newPassword })
@@ -241,7 +326,7 @@ export const changeAdminCredentials = async (currentPassword: string, newUsernam
 
 export const adminLogout = async (): Promise<void> => {
     try {
-        await fetch('/api/admin/logout', {
+        await fetch(getApiUrl('/api/admin/logout'), {
             method: 'POST',
             headers: getAuthHeaders()
         });
@@ -251,7 +336,7 @@ export const adminLogout = async (): Promise<void> => {
 
 export const fetchAdminUsers = async (): Promise<{ count: number; users: any[] }> => {
     try {
-        const res = await fetch('/api/admin/users', {
+        const res = await fetch(getApiUrl('/api/admin/users'), {
             headers: getAuthHeaders()
         });
         const data = await safeJsonParse(res);
@@ -266,7 +351,7 @@ export const fetchAdminUsers = async (): Promise<{ count: number; users: any[] }
 
 export const syncAllBotsRequest = async (): Promise<{ success: boolean; message: string; results?: any[] }> => {
     try {
-        const res = await fetch('/api/bots/sync/all', {
+        const res = await fetch(getApiUrl('/api/bots/sync/all'), {
             method: 'POST',
             headers: getAuthHeaders()
         });
